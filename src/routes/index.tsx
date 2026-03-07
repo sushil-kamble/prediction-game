@@ -3,18 +3,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { ArrowRight, Sparkles, Trophy, Zap } from "lucide-react";
 import { ChallengeCard } from "#/components/app/challenge-card";
-import {
-	GlassCard,
-	PageShell,
-	SectionEyebrow,
-	SkeletonBlock,
-} from "#/components/app/ui";
+import { PageShell, SkeletonBlock } from "#/components/app/ui";
 import { Button } from "#/components/ui/button";
 import { api } from "#/lib/api";
 import { type ChallengeStatus, getSportEmoji } from "#/lib/challenge";
-import {
-	type StoredAdminChallenge,
-} from "#/lib/storage";
+import { type StoredAdminChallenge } from "#/lib/storage";
 import { useStoredAdminChallenges } from "#/lib/use-stored-admin-challenges";
 
 type ChallengeSummary = {
@@ -39,17 +32,21 @@ export const Route = createFileRoute("/")({
 function HomeRoute() {
 	const storedChallenges = useStoredAdminChallenges() as StoredAdminChallenge[];
 
-	const challengeIds = storedChallenges.map((challenge) => challenge.challengeId);
+	const challengeIds = storedChallenges.map(
+		(challenge) => challenge.challengeId
+	);
 	const summaries = useQuery(
 		api.challenges.getChallengeSummaries,
-		challengeIds.length ? { challengeIds } : "skip",
+		challengeIds.length ? { challengeIds } : "skip"
 	);
 
 	const mergedChallenges = useMemo(() => {
 		const summaryMap = new Map(
 			(summaries ?? [])
-				.filter((summary): summary is NonNullable<typeof summary> => Boolean(summary))
-				.map((summary) => [summary.challengeId.toString(), summary]),
+				.filter((summary): summary is NonNullable<typeof summary> =>
+					Boolean(summary)
+				)
+				.map((summary) => [summary.challengeId.toString(), summary])
 		);
 
 		return storedChallenges.map((challenge) => {
@@ -66,113 +63,129 @@ function HomeRoute() {
 	}, [storedChallenges, summaries]);
 
 	return (
-		<PageShell className="gap-6 py-6 sm:py-10">
+		<PageShell className="gap-8 py-8 sm:py-16">
 			{/* Hero */}
-			<GlassCard className="px-5 py-8 sm:px-10 sm:py-12">
-				<div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr]">
-					<div>
-						<SectionEyebrow>Live Sports Picks</SectionEyebrow>
-						<h1 className="font-display text-[2.6rem] leading-[0.95] text-foreground sm:text-[4.5rem]">
-							One link.
+			<div className="relative border-4 border-white bg-black p-6 shadow-[12px_12px_0px_0px_#ccff00] sm:p-12">
+				<div className="bg-primary absolute top-0 right-0 border-b-4 border-l-4 border-white px-4 py-1 text-xs font-bold tracking-widest text-black">
+					V1.0.0
+				</div>
+				<div className="grid gap-12 lg:grid-cols-[1.2fr_0.8fr]">
+					<div className="flex flex-col justify-center">
+						<div className="mb-6 inline-block w-max border-2 border-black bg-white px-3 py-1 text-xs font-bold tracking-widest text-black uppercase">
+							Live Sports Picks
+						</div>
+						<h1 className="font-display mb-8 text-[3.5rem] leading-[0.9] text-white uppercase sm:text-[6rem]">
+							One Link.
 							<br />
-							<span className="bg-gradient-to-r from-violet-400 via-purple-400 to-fuchsia-400 bg-clip-text text-transparent">
-								One shot.
+							<span
+								className="text-primary"
+								style={{ textShadow: "4px 4px 0 #fff" }}
+							>
+								One Shot.
 							</span>
 							<br />
-							Live ranks.
+							Live Ranks.
 						</h1>
-						<p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
-							PredictGame is a mobile-first sports challenge builder for match-day
-							crowds. Create a card stack of prediction questions, share the link,
-							and let Convex update every leaderboard in real time while you score.
+						<p className="border-primary mt-2 max-w-xl border-l-4 pl-4 text-lg leading-relaxed font-medium text-zinc-300 sm:text-xl">
+							PredictGame is a brutal, high-contrast sports challenge builder
+							for match-day crowds. Create a stack of prediction questions,
+							share the link, and watch the leaderboard burn up in real time.
 						</p>
-						<div className="mt-8 flex flex-col gap-3 sm:flex-row">
+						<div className="mt-10 flex flex-col gap-4 sm:flex-row">
 							<Button size="lg" asChild>
 								<Link to="/admin" className="no-underline">
-									Create a challenge
-									<ArrowRight className="h-4 w-4" />
+									START CHALLENGE
+									<ArrowRight className="ml-2 h-5 w-5" />
 								</Link>
 							</Button>
 							<Button variant="outline" size="lg" asChild>
 								<a href="#my-challenges" className="no-underline">
-									My local admin cards
+									LOCAL ADMIN
 								</a>
 							</Button>
 						</div>
 					</div>
 
-					<div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+					<div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
 						{[
 							{
-								title: "Mobile-first",
-								description: "48px tap targets and sticky bottom CTAs everywhere.",
-								icon: <Zap className="h-5 w-5" />,
+								title: "MOBILE FIRST",
+								description:
+									"Massive targets. Sticky actions. Built for thumbs.",
+								icon: <Zap className="h-6 w-6 text-black" />,
 							},
 							{
-								title: "Real-time",
-								description: "Every scoring change reorders the leaderboard instantly.",
-								icon: <Trophy className="h-5 w-5" />,
+								title: "REAL-TIME",
+								description:
+									"Scoring changes reorder the board instantly. No delays.",
+								icon: <Trophy className="h-6 w-6 text-black" />,
 							},
 							{
-								title: "Share-ready",
-								description: "Clean invite links with OG previews for chat apps.",
-								icon: <Sparkles className="h-5 w-5" />,
+								title: "SHARE READY",
+								description:
+									"Clean links. Sharp previews. Ready for group chats.",
+								icon: <Sparkles className="h-6 w-6 text-black" />,
 							},
-						].map((item, index) => (
+						].map((item) => (
 							<div
 								key={item.title}
-								className="rounded-xl border border-border bg-secondary/50 p-4 animate-[rise-in_280ms_ease-out]"
-								style={{ animationDelay: `${index * 90}ms` }}
+								className="border-2 border-white bg-zinc-900 p-5 transition-colors hover:bg-zinc-800"
 							>
-								<div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500/20 to-purple-700/20 text-primary">
+								<div className="bg-primary mb-4 flex h-12 w-12 items-center justify-center border-2 border-white shadow-[2px_2px_0px_0px_#fff]">
 									{item.icon}
 								</div>
-								<h2 className="text-sm font-semibold text-foreground">
+								<h2 className="mb-2 text-lg font-bold tracking-wider text-white uppercase">
 									{item.title}
 								</h2>
-								<p className="mt-1.5 text-sm leading-6 text-muted-foreground">
+								<p className="text-sm leading-relaxed font-medium text-zinc-400">
 									{item.description}
 								</p>
 							</div>
 						))}
 					</div>
 				</div>
-			</GlassCard>
+			</div>
 
 			{/* My Challenges */}
-			<GlassCard className="px-5 py-6 sm:px-8">
-				<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+			<div className="relative mt-8 border-2 border-zinc-800 bg-black p-6 sm:p-10">
+				<div className="mb-8 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
 					<div id="my-challenges">
-						<SectionEyebrow>My Challenges</SectionEyebrow>
-						<h2 className="font-display text-3xl text-foreground sm:text-4xl">
-							Local admin access on this device
+						<div className="text-primary mb-2 text-sm font-bold tracking-widest uppercase">
+							My Challenges
+						</div>
+						<h2 className="font-display text-4xl text-white uppercase sm:text-5xl">
+							LOCAL ADMIN
 						</h2>
-						<p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-							Admin access is stored locally in this v1. Open any saved card to
-							continue editing, share the link, or score results live.
+						<p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-400">
+							Admin access is stored locally. Open any saved card to continue
+							editing, share the link, or score results live.
 						</p>
 					</div>
-					<Button variant="outline" asChild>
-						<Link to="/admin" className="no-underline">Open admin</Link>
+					<Button variant="secondary" asChild>
+						<Link to="/admin" className="no-underline">
+							OPEN ADMIN
+						</Link>
 					</Button>
 				</div>
 
-				<div className="mt-6 grid gap-4">
+				<div className="grid gap-6">
 					{storedChallenges.length === 0 ? (
-						<div className="rounded-xl border border-dashed border-border bg-secondary/30 px-5 py-8 text-center">
-							<p className="m-0 text-sm leading-7 text-muted-foreground">
-								No local admin cards yet. Start with a fresh match and build your
-								first prediction board.
+						<div className="flex flex-col items-center border-2 border-dashed border-zinc-700 bg-zinc-950 p-10 text-center">
+							<p className="mb-6 max-w-md text-lg font-medium text-zinc-400">
+								NO LOCAL ADMIN CARDS YET. START A FRESH MATCH.
 							</p>
-							<div className="mt-5">
-								<Button asChild>
-									<Link to="/admin" className="no-underline">Create challenge</Link>
-								</Button>
-							</div>
+							<Button asChild>
+								<Link to="/admin" className="no-underline">
+									CREATE NOW
+								</Link>
+							</Button>
 						</div>
 					) : summaries === undefined ? (
 						Array.from({ length: storedChallenges.length }).map((_, index) => (
-							<SkeletonBlock key={index} className="h-34" />
+							<SkeletonBlock
+								key={index}
+								className="h-34 border-2 border-zinc-800 bg-zinc-900"
+							/>
 						))
 					) : (
 						mergedChallenges.map((challenge) => (
@@ -187,43 +200,41 @@ function HomeRoute() {
 						))
 					)}
 				</div>
-			</GlassCard>
+			</div>
 
 			{/* Sports Grid */}
-			<GlassCard className="overflow-hidden px-5 py-6 sm:px-8">
-				<SectionEyebrow>Sports</SectionEyebrow>
-				<div className="grid gap-4 sm:grid-cols-[0.8fr_1.2fr]">
-					<div className="rounded-xl bg-gradient-to-br from-violet-600/80 via-purple-600/80 to-fuchsia-700/80 p-6 text-white shadow-[0_16px_48px_rgba(139,92,246,0.2)]">
-						<p className="text-xs font-bold uppercase tracking-[0.26em] text-white/60">
-							Theme
-						</p>
-						<h3 className="mt-3 font-display text-3xl leading-none">
-							Built for game day
-						</h3>
-						<p className="mt-4 text-sm leading-6 text-white/75">
-							Deep purples, glass panels, and real-time data keep your
-							prediction board looking sharp on any screen.
-						</p>
-					</div>
-					<div className="grid gap-3 sm:grid-cols-2">
-						{["Cricket", "Football", "F1", "Basketball"].map((sport) => (
-							<div
-								key={sport}
-								className="rounded-xl border border-border bg-secondary/50 px-4 py-4"
-							>
-								<p className="text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground">
+			<div className="mt-8 grid gap-6 sm:grid-cols-[1fr_1.5fr]">
+				<div className="border-primary bg-primary border-2 p-8 text-black shadow-[8px_8px_0px_0px_rgba(255,255,255,0.2)]">
+					<p className="mb-4 text-sm font-extrabold tracking-[0.2em] uppercase">
+						THEME // AESTHETIC
+					</p>
+					<h3 className="font-display mb-6 text-4xl leading-tight uppercase">
+						BUILT FOR GAME DAY
+					</h3>
+					<p className="text-base leading-relaxed font-bold">
+						High contrast. Massive typography. Unapologetic design. Keep the
+						action readable on any screen, even in direct sunlight.
+					</p>
+				</div>
+				<div className="grid gap-4 sm:grid-cols-2">
+					{["Cricket", "Football", "F1", "Basketball"].map((sport) => (
+						<div
+							key={sport}
+							className="hover:border-primary flex flex-col justify-between border-2 border-zinc-800 bg-black p-6 transition-colors"
+						>
+							<div>
+								<p className="mb-4 text-xs font-bold tracking-[0.2em] text-zinc-500 uppercase">
 									{sport}
 								</p>
-								<p className="mt-3 text-4xl">{getSportEmoji(sport)}</p>
-								<p className="mt-3 text-sm leading-6 text-muted-foreground">
-									Build a polished pick flow in minutes and keep the action readable
-									on a 375px screen.
-								</p>
+								<p className="mb-4 text-5xl">{getSportEmoji(sport)}</p>
 							</div>
-						))}
-					</div>
+							<p className="text-sm leading-relaxed font-medium text-zinc-400">
+								Polished pick flow in minutes. Readable on a 375px screen.
+							</p>
+						</div>
+					))}
 				</div>
-			</GlassCard>
+			</div>
 		</PageShell>
 	);
 }

@@ -11,6 +11,7 @@ export default defineSchema({
 			v.literal("scoring"),
 			v.literal("closed"),
 		),
+		questionEditUnlocked: v.optional(v.boolean()),
 		adminSecret: v.string(),
 		createdAt: v.number(),
 	}),

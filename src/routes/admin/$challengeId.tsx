@@ -26,6 +26,16 @@ import {
 	StatusBadge,
 	Textarea,
 } from "#/components/app/ui";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "#/components/ui/alert-dialog";
 import { useToast } from "#/components/app/use-toast";
 import { api } from "#/lib/api";
 import {
@@ -58,7 +68,9 @@ function AdminChallengeRoute() {
 	const updateQuestion = useMutation(api.challenges.updateQuestion);
 	const deleteQuestion = useMutation(api.challenges.deleteQuestion);
 	const publishChallenge = useMutation(api.challenges.publishChallenge);
+	const unpublishChallenge = useMutation(api.challenges.unpublishChallenge);
 	const markCorrectAnswer = useMutation(api.challenges.markCorrectAnswer);
+	const clearAnswerMarkings = useMutation(api.challenges.clearAnswerMarkings);
 	const closeChallenge = useMutation(api.challenges.closeChallenge);
 	const { showToast } = useToast();
 
@@ -71,10 +83,16 @@ function AdminChallengeRoute() {
 	const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
 	const [deleteTarget, setDeleteTarget] = useState<AdminQuestion | null>(null);
 	const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
-	const [isCloseSheetOpen, setIsCloseSheetOpen] = useState(false);
+	const [isCloseConfirmOpen, setIsCloseConfirmOpen] = useState(false);
+	const [isUnpublishConfirmOpen, setIsUnpublishConfirmOpen] = useState(false);
+	const [isClearFormConfirmOpen, setIsClearFormConfirmOpen] = useState(false);
+	const [isClearMarkingsConfirmOpen, setIsClearMarkingsConfirmOpen] =
+		useState(false);
 	const [isSaving, setIsSaving] = useState(false);
 	const [isPublishing, setIsPublishing] = useState(false);
+	const [isUnpublishing, setIsUnpublishing] = useState(false);
 	const [isClosing, setIsClosing] = useState(false);
+	const [isClearingMarkings, setIsClearingMarkings] = useState(false);
 	const [isSharing, setIsSharing] = useState(false);
 
 	useEffect(() => {
@@ -107,6 +125,9 @@ function AdminChallengeRoute() {
 		? answeredCorrectCount(challenge.questions)
 		: 0;
 	const hasAdminAccess = Boolean(adminSecret);
+	const isQuestionEditUnlocked =
+		(challenge?.questionEditUnlocked ?? challenge?.status === "draft") &&
+		challenge?.status !== "closed";
 
 	const orderedQuestions = useMemo(
 		() =>
@@ -115,6 +136,12 @@ function AdminChallengeRoute() {
 			>,
 		[challenge],
 	);
+	const isFormPristine =
+		!editingQuestionId &&
+		questionText.trim().length === 0 &&
+		options.length === 2 &&
+		options.every((option) => option.trim().length === 0) &&
+		pointValue === 1;
 
 	if (challenge === undefined || adminSecret === undefined) {
 		return <AdminChallengeSkeleton />;
@@ -138,6 +165,10 @@ function AdminChallengeRoute() {
 
 		if (!adminSecret) {
 			showToast("Admin access is only available on the device that created this challenge.", "error");
+			return;
+		}
+		if (!isQuestionEditUnlocked) {
+			showToast("Questions are frozen. Unpublish to edit questions.", "error");
 			return;
 		}
 
@@ -190,14 +221,38 @@ function AdminChallengeRoute() {
 			return;
 		}
 
+		const wasDraft = challenge?.status === "draft";
 		setIsPublishing(true);
 		try {
 			await publishChallenge({ challengeId, adminSecret });
-			showToast("Challenge published and ready to share.", "success");
+			showToast(
+				wasDraft
+					? "Challenge published and questions frozen."
+					: "Questions frozen.",
+				"success",
+			);
 		} catch (error) {
 			showToast(getErrorMessage(error), "error");
 		} finally {
 			setIsPublishing(false);
+		}
+	}
+
+	async function handleUnpublish() {
+		if (!adminSecret) {
+			showToast("This browser doesn't have admin access for the challenge.", "error");
+			return;
+		}
+
+		setIsUnpublishing(true);
+		try {
+			await unpublishChallenge({ challengeId, adminSecret });
+			showToast("Questions are now editable.", "success");
+			setIsUnpublishConfirmOpen(false);
+		} catch (error) {
+			showToast(getErrorMessage(error), "error");
+		} finally {
+			setIsUnpublishing(false);
 		}
 	}
 
@@ -274,11 +329,32 @@ function AdminChallengeRoute() {
 		try {
 			await closeChallenge({ challengeId, adminSecret });
 			showToast("Challenge closed.", "success");
-			setIsCloseSheetOpen(false);
+			setIsCloseConfirmOpen(false);
 		} catch (error) {
 			showToast(getErrorMessage(error), "error");
 		} finally {
 			setIsClosing(false);
+		}
+	}
+
+	async function handleClearAnswerMarkings() {
+		if (!adminSecret) {
+			showToast(
+				"This browser doesn't have admin access for the challenge.",
+				"error",
+			);
+			return;
+		}
+
+		setIsClearingMarkings(true);
+		try {
+			await clearAnswerMarkings({ challengeId, adminSecret });
+			showToast("Answer markings cleared.", "success");
+			setIsClearMarkingsConfirmOpen(false);
+		} catch (error) {
+			showToast(getErrorMessage(error), "error");
+		} finally {
+			setIsClearingMarkings(false);
 		}
 	}
 
@@ -294,6 +370,11 @@ function AdminChallengeRoute() {
 		setQuestionText("");
 		setOptions(["", ""]);
 		setPointValue(1);
+	}
+
+	function handleClearForm() {
+		resetForm();
+		setIsClearFormConfirmOpen(false);
 	}
 
 	return (
@@ -358,16 +439,12 @@ function AdminChallengeRoute() {
 											: "Add a new pick card"}
 									</h2>
 								</div>
-								<Button variant="outline" onClick={resetForm}>
-									Clear form
-								</Button>
 							</div>
 
-							{challenge.status !== "draft" ? (
+							{!isQuestionEditUnlocked ? (
 								<InlineNotice tone="warning" className="mt-5">
-									Questions can only be edited in draft. The form remains visible so you
-									can see what would be sent, but Convex will reject changes after
-									publish.
+									Questions are frozen. Click unpublish in the publish section to unlock
+									editing.
 								</InlineNotice>
 							) : null}
 
@@ -380,6 +457,7 @@ function AdminChallengeRoute() {
 										value={questionText}
 										onChange={(event) => setQuestionText(event.target.value)}
 										placeholder="Who scores first?"
+										disabled={!isQuestionEditUnlocked}
 									/>
 								</label>
 
@@ -397,6 +475,7 @@ function AdminChallengeRoute() {
 													current.length >= 5 ? current : [...current, ""],
 												)
 											}
+											disabled={!isQuestionEditUnlocked}
 										>
 											Add option
 										</Button>
@@ -414,6 +493,7 @@ function AdminChallengeRoute() {
 													)
 												}
 												placeholder={`Option ${index + 1}`}
+												disabled={!isQuestionEditUnlocked}
 											/>
 											<Button
 												type="button"
@@ -425,10 +505,10 @@ function AdminChallengeRoute() {
 															? current
 															: current.filter(
 																	(_, itemIndex) => itemIndex !== index,
-																),
+															),
 													)
 												}
-												disabled={options.length <= 2}
+												disabled={!isQuestionEditUnlocked || options.length <= 2}
 											>
 												Remove
 											</Button>
@@ -443,6 +523,7 @@ function AdminChallengeRoute() {
 										onClick={() =>
 											setPointValue((current) => Math.max(1, current - 1))
 										}
+										disabled={!isQuestionEditUnlocked}
 									>
 										-1
 									</Button>
@@ -458,18 +539,34 @@ function AdminChallengeRoute() {
 										type="button"
 										variant="outline"
 										onClick={() => setPointValue((current) => current + 1)}
+										disabled={!isQuestionEditUnlocked}
 									>
 										+1
 									</Button>
 								</div>
 
-								<Button type="submit" className="w-full" disabled={isSaving}>
+								<Button
+									type="submit"
+									className="w-full"
+									disabled={isSaving || !isQuestionEditUnlocked}
+								>
 									{isSaving
 										? "Saving..."
 										: editingQuestionId
 											? "Update question"
 											: "Add question"}
 								</Button>
+								<div className="flex justify-end">
+									<Button
+										type="button"
+										variant="outline"
+										className="w-full sm:w-auto"
+										onClick={() => setIsClearFormConfirmOpen(true)}
+										disabled={!isQuestionEditUnlocked || isFormPristine}
+									>
+										Clear form
+									</Button>
+								</div>
 							</form>
 						</GlassCard>
 
@@ -481,17 +578,35 @@ function AdminChallengeRoute() {
 										Launch the challenge
 									</h2>
 								</div>
-								<Button
-									className="sm:w-auto"
-									onClick={handlePublish}
-									disabled={
-										challenge.status !== "draft" ||
-										challenge.questions.length === 0 ||
-										isPublishing
-									}
-								>
-									{isPublishing ? "Publishing..." : "Publish challenge"}
-								</Button>
+									{challenge.status === "closed" ? (
+										<Button className="sm:w-auto" disabled>
+											Challenge closed
+										</Button>
+									) : challenge.status === "draft" ? (
+										<Button
+											className="sm:w-auto"
+											onClick={handlePublish}
+										disabled={challenge.questions.length === 0 || isPublishing}
+									>
+										{isPublishing ? "Publishing..." : "Publish challenge"}
+									</Button>
+								) : isQuestionEditUnlocked ? (
+									<Button
+										className="sm:w-auto"
+										onClick={handlePublish}
+										disabled={isPublishing}
+									>
+										{isPublishing ? "Publishing..." : "Publish questions"}
+									</Button>
+								) : (
+									<Button
+										variant="outline"
+										className="sm:w-auto"
+										onClick={() => setIsUnpublishConfirmOpen(true)}
+									>
+										Unpublish
+									</Button>
+								)}
 							</div>
 
 							{challenge.questions.length === 0 ? (
@@ -564,7 +679,7 @@ function AdminChallengeRoute() {
 												{question.text}
 											</h3>
 										</div>
-										{hasAdminAccess ? (
+										{hasAdminAccess && isQuestionEditUnlocked ? (
 											<div className="flex items-center gap-2">
 												<Button
 													variant="outline"
@@ -651,19 +766,30 @@ function AdminChallengeRoute() {
 							))}
 						</div>
 
-						<div className="mt-6 flex flex-col gap-3 sm:flex-row">
-							<Button variant="outline" asChild>
-								<a href={leaderboardUrl} className="no-underline">
-									Open leaderboard
-								</a>
-							</Button>
-							<Button
-								variant="destructive"
-								onClick={() => setIsCloseSheetOpen(true)}
-							>
-								Close challenge
-							</Button>
-						</div>
+							<div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+								<Button variant="outline" asChild className="w-full sm:w-auto">
+									<a href={leaderboardUrl} className="no-underline">
+										Open leaderboard
+									</a>
+								</Button>
+								<div className="flex flex-col gap-3 sm:ml-auto sm:flex-row">
+									<Button
+										variant="outline"
+										className="w-full sm:w-auto"
+										onClick={() => setIsClearMarkingsConfirmOpen(true)}
+										disabled={answeredCount === 0 || isClearingMarkings}
+									>
+										Clear answer markings
+									</Button>
+									<Button
+										variant="destructive"
+										className="w-full sm:w-auto"
+										onClick={() => setIsCloseConfirmOpen(true)}
+									>
+										Close challenge
+									</Button>
+								</div>
+							</div>
 					</GlassCard>
 				)}
 			</PageShell>
@@ -712,31 +838,112 @@ function AdminChallengeRoute() {
 				<Input readOnly value={shareUrl} />
 			</BottomSheet>
 
-			<BottomSheet
-				open={isCloseSheetOpen}
-				onClose={() => setIsCloseSheetOpen(false)}
-				title="Close challenge?"
-				description="Players will still be able to view the leaderboard, but new submissions will be blocked."
-				footer={
-					<>
-						<Button
+			<AlertDialog
+				open={isClearFormConfirmOpen}
+				onOpenChange={setIsClearFormConfirmOpen}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Clear form?</AlertDialogTitle>
+						<AlertDialogDescription>
+							This only resets the question composer fields on this screen. It
+							does not delete any saved challenge questions.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel className="w-full sm:w-auto">
+							Keep editing
+						</AlertDialogCancel>
+						<AlertDialogAction
 							variant="destructive"
-							className="w-full"
+							className="w-full sm:w-auto"
+							onClick={handleClearForm}
+						>
+							Yes, clear form
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+
+			<AlertDialog open={isCloseConfirmOpen} onOpenChange={setIsCloseConfirmOpen}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Close challenge?</AlertDialogTitle>
+						<AlertDialogDescription>
+							Players can still view the leaderboard, but new submissions will be
+							blocked.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel className="w-full sm:w-auto">
+							Keep open
+						</AlertDialogCancel>
+						<AlertDialogAction
+							variant="destructive"
+							className="w-full sm:w-auto"
 							onClick={handleCloseChallenge}
 							disabled={isClosing}
 						>
 							{isClosing ? "Closing..." : "Close challenge"}
-						</Button>
-						<Button
-							variant="outline"
-							className="w-full"
-							onClick={() => setIsCloseSheetOpen(false)}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+
+			<AlertDialog
+				open={isUnpublishConfirmOpen}
+				onOpenChange={setIsUnpublishConfirmOpen}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Unpublish questions?</AlertDialogTitle>
+						<AlertDialogDescription>
+							This unlocks question editing for admins. The challenge link stays the
+							same and users can continue answering.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel className="w-full sm:w-auto">
+							Keep published
+						</AlertDialogCancel>
+						<AlertDialogAction
+							className="w-full sm:w-auto"
+							onClick={handleUnpublish}
+							disabled={isUnpublishing}
 						>
-							Keep open
-						</Button>
-					</>
-				}
-			/>
+							{isUnpublishing ? "Unpublishing..." : "Unpublish"}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+
+			<AlertDialog
+				open={isClearMarkingsConfirmOpen}
+				onOpenChange={setIsClearMarkingsConfirmOpen}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Clear answer markings?</AlertDialogTitle>
+						<AlertDialogDescription>
+							This will remove all currently marked correct answers so you can
+							rescore from scratch.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel className="w-full sm:w-auto">
+							Keep markings
+						</AlertDialogCancel>
+						<AlertDialogAction
+							variant="destructive"
+							className="w-full sm:w-auto"
+							onClick={handleClearAnswerMarkings}
+							disabled={isClearingMarkings}
+						>
+							{isClearingMarkings ? "Clearing..." : "Clear markings"}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</>
 	);
 }

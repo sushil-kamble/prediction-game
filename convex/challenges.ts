@@ -182,17 +182,24 @@ function ensureOptionIndex(index: number, options: string[], fieldName: string) 
 	}
 }
 
+function isQuestionEditingUnlocked(challenge: Doc<"challenges">) {
+	return challenge.questionEditUnlocked ?? challenge.status === "draft";
+}
+
 function serializePublicQuestion(
 	question: Doc<"questions">,
 	status: Doc<"challenges">["status"],
 ) {
+	const { pointValue, ...questionWithoutPoints } = question;
+	void pointValue;
+
 	if (status === "open") {
-		const { correctOptionIndex, ...rest } = question;
+		const { correctOptionIndex, ...rest } = questionWithoutPoints;
 		void correctOptionIndex;
 		return rest;
 	}
 
-	return question;
+	return questionWithoutPoints;
 }
 
 export const createChallenge = mutation({
@@ -218,6 +225,7 @@ export const createChallenge = mutation({
 				title,
 				sport,
 				status,
+				questionEditUnlocked: true,
 				adminSecret,
 				createdAt: Date.now(),
 			});
@@ -256,9 +264,12 @@ export const addQuestion = mutation({
 				challengeId,
 				requireTrimmed(args.adminSecret, "Admin secret"),
 			);
-			if (challenge.status !== "draft") {
+			if (challenge.status === "closed") {
+				throw new Error("This challenge is closed.");
+			}
+			if (!isQuestionEditingUnlocked(challenge)) {
 				throw new Error(
-					"Questions can only be added while the challenge is in draft.",
+					"Questions are locked. Unpublish to edit questions.",
 				);
 			}
 
@@ -301,9 +312,12 @@ export const updateQuestion = mutation({
 				challengeId,
 				requireTrimmed(args.adminSecret, "Admin secret"),
 			);
-			if (challenge.status !== "draft") {
+			if (challenge.status === "closed") {
+				throw new Error("This challenge is closed.");
+			}
+			if (!isQuestionEditingUnlocked(challenge)) {
 				throw new Error(
-					"Questions can only be edited while the challenge is in draft.",
+					"Questions are locked. Unpublish to edit questions.",
 				);
 			}
 
@@ -342,9 +356,12 @@ export const deleteQuestion = mutation({
 				challengeId,
 				requireTrimmed(args.adminSecret, "Admin secret"),
 			);
-			if (challenge.status !== "draft") {
+			if (challenge.status === "closed") {
+				throw new Error("This challenge is closed.");
+			}
+			if (!isQuestionEditingUnlocked(challenge)) {
 				throw new Error(
-					"Questions can only be deleted while the challenge is in draft.",
+					"Questions are locked. Unpublish to edit questions.",
 				);
 			}
 
@@ -385,18 +402,58 @@ export const publishChallenge = mutation({
 				challengeId,
 				requireTrimmed(args.adminSecret, "Admin secret"),
 			);
-			if (challenge.status !== "draft") {
-				throw new Error("Only draft challenges can be published.");
+			if (challenge.status === "closed") {
+				throw new Error("Closed challenges cannot be published.");
 			}
 
-			const questions = await listChallengeQuestions(ctx, challengeId);
-			if (questions.length === 0) {
-				throw new Error("Add at least one question before publishing.");
+			if (challenge.status === "draft") {
+				const questions = await listChallengeQuestions(ctx, challengeId);
+				if (questions.length === 0) {
+					throw new Error("Add at least one question before publishing.");
+				}
+
+				await ctx.db.patch(challengeId, {
+					status: "open",
+					questionEditUnlocked: false,
+				});
+				return;
 			}
 
-			await ctx.db.patch(challengeId, { status: "open" });
+			await ctx.db.patch(challengeId, { questionEditUnlocked: false });
 		} catch (error) {
 			logMutationError("publishChallenge", args, error);
+			throw error;
+		}
+	},
+});
+
+export const unpublishChallenge = mutation({
+	args: {
+		challengeId: v.string(),
+		adminSecret: v.string(),
+	},
+	handler: async (ctx, args) => {
+		try {
+			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+			if (!challengeId) {
+				throw new Error("Challenge not found.");
+			}
+
+			const challenge = await requireAdminChallenge(
+				ctx,
+				challengeId,
+				requireTrimmed(args.adminSecret, "Admin secret"),
+			);
+			if (challenge.status === "draft") {
+				throw new Error("Draft challenges are already editable.");
+			}
+			if (challenge.status === "closed") {
+				throw new Error("Closed challenges cannot be unpublished.");
+			}
+
+			await ctx.db.patch(challengeId, { questionEditUnlocked: true });
+		} catch (error) {
+			logMutationError("unpublishChallenge", args, error);
 			throw error;
 		}
 	},
@@ -603,6 +660,49 @@ export const markCorrectAnswer = mutation({
 	},
 });
 
+export const clearAnswerMarkings = mutation({
+	args: {
+		challengeId: v.string(),
+		adminSecret: v.string(),
+	},
+	handler: async (ctx, args) => {
+		try {
+			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+			if (!challengeId) {
+				throw new Error("Challenge not found.");
+			}
+
+			const challenge = await requireAdminChallenge(
+				ctx,
+				challengeId,
+				requireTrimmed(args.adminSecret, "Admin secret"),
+			);
+			if (challenge.status === "draft") {
+				throw new Error("Publish the challenge before scoring answers.");
+			}
+			if (challenge.status === "closed") {
+				throw new Error("This challenge is closed.");
+			}
+
+			const questions = await listChallengeQuestions(ctx, challengeId);
+			await Promise.all(
+				questions
+					.filter((question: Doc<"questions">) => question.correctOptionIndex !== null)
+					.map((question: Doc<"questions">) =>
+						ctx.db.patch(question._id, { correctOptionIndex: null }),
+					),
+			);
+
+			if (challenge.status === "scoring") {
+				await ctx.db.patch(challengeId, { status: "open" });
+			}
+		} catch (error) {
+			logMutationError("clearAnswerMarkings", args, error);
+			throw error;
+		}
+	},
+});
+
 export const closeChallenge = mutation({
 	args: {
 		challengeId: v.string(),
@@ -620,7 +720,10 @@ export const closeChallenge = mutation({
 				challengeId,
 				requireTrimmed(args.adminSecret, "Admin secret"),
 			);
-			await ctx.db.patch(challengeId, { status: "closed" });
+			await ctx.db.patch(challengeId, {
+				status: "closed",
+				questionEditUnlocked: false,
+			});
 		} catch (error) {
 			logMutationError("closeChallenge", args, error);
 			throw error;

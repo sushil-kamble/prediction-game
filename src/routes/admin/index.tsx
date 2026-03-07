@@ -2,17 +2,15 @@ import { startTransition, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { Plus, ShieldCheck } from "lucide-react";
+import { Plus, ShieldAlert } from "lucide-react";
 import { ChallengeCard } from "#/components/app/challenge-card";
 import {
 	BottomSheet,
 	Button,
-	GlassCard,
-	Input,
 	PageShell,
-	SectionEyebrow,
 	SkeletonBlock,
 } from "#/components/app/ui";
+import { Input } from "#/components/ui/input";
 import { useToast } from "#/components/app/use-toast";
 import { api } from "#/lib/api";
 import { SPORT_SUGGESTIONS, type ChallengeStatus } from "#/lib/challenge";
@@ -121,56 +119,61 @@ function AdminHomeRoute() {
 
 	return (
 		<>
-			<PageShell className="gap-6 py-6 sm:py-8">
-				<GlassCard className="px-5 py-6 sm:px-8">
-					<div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+			<PageShell className="gap-8 py-8 sm:py-12">
+				<div className="border-4 border-white bg-black p-6 sm:p-10">
+					<div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
 						<div>
-							<SectionEyebrow>Admin Mode</SectionEyebrow>
-							<h1 className="font-display text-4xl leading-none text-foreground sm:text-5xl">
-								Build the board
+							<div className="inline-block bg-primary text-black font-bold uppercase tracking-widest px-3 py-1 text-xs mb-4">
+								ADMIN MODE
+							</div>
+							<h1 className="font-display text-5xl leading-none text-white sm:text-7xl uppercase mb-4">
+								Control
+								<br />
+								Room
 							</h1>
-							<p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
-								Create prediction questions on this device, publish the challenge,
-								and score results from the same control room.
+							<p className="max-w-xl text-lg leading-relaxed text-zinc-300 font-medium">
+								Create prediction questions, publish the challenge,
+								and score results live.
 							</p>
 						</div>
-						<div className="rounded-xl border border-border bg-secondary/50 px-4 py-4 text-sm leading-6 text-muted-foreground">
-							<div className="flex items-center gap-2 text-foreground">
-								<ShieldCheck className="h-4 w-4 text-primary" />
-								<span className="font-semibold">Device-specific admin access</span>
+						<div className="border-2 border-zinc-800 bg-zinc-950 p-5 max-w-sm">
+							<div className="flex items-center gap-3 text-white mb-3">
+								<ShieldAlert className="h-6 w-6 text-primary" />
+								<span className="font-bold uppercase tracking-wider text-sm">DEVICE LOCKED ADMIN</span>
 							</div>
-							<p className="mt-2 mb-0">
-								Secrets live in local storage in v1. If you switch browsers, you can
-								still view the challenge but not edit it.
+							<p className="text-sm leading-relaxed text-zinc-400 font-medium m-0">
+								Secrets live in local storage. Switch browsers and you lose edit access. Proceed with caution.
 							</p>
 						</div>
 					</div>
-				</GlassCard>
+				</div>
 
-				<GlassCard className="px-5 py-6 sm:px-8">
-					<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+				<div className="border-2 border-zinc-800 bg-black p-6 sm:p-10">
+					<div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between mb-8">
 						<div>
-							<SectionEyebrow>Saved Locally</SectionEyebrow>
-							<h2 className="font-display text-3xl text-foreground">
-								My challenges
+							<div className="text-primary font-bold tracking-widest text-sm uppercase mb-2">
+								SAVED LOCALLY
+							</div>
+							<h2 className="font-display text-4xl text-white uppercase">
+								MY CHALLENGES
 							</h2>
 						</div>
-						<Button onClick={() => setIsSheetOpen(true)} className="sm:w-auto">
-							<Plus className="h-4 w-4" />
-							New challenge
+						<Button onClick={() => setIsSheetOpen(true)} className="sm:w-auto text-lg px-8">
+							<Plus className="h-6 w-6 mr-2" />
+							NEW CHALLENGE
 						</Button>
 					</div>
 
-					<div className="mt-6 grid gap-4">
+					<div className="grid gap-6">
 						{storedChallenges.length === 0 ? (
-							<div className="rounded-xl border border-dashed border-border bg-secondary/30 px-5 py-8 text-center">
-								<p className="m-0 text-sm leading-7 text-muted-foreground">
-									You haven't created anything on this device yet.
+							<div className="border-2 border-dashed border-zinc-700 bg-zinc-950 p-10 text-center flex flex-col items-center">
+								<p className="text-lg font-medium text-zinc-400 mb-6 max-w-md">
+									YOU HAVEN'T CREATED ANYTHING ON THIS DEVICE YET.
 								</p>
 							</div>
 						) : summaries === undefined ? (
 							Array.from({ length: storedChallenges.length }).map((_, index) => (
-								<SkeletonBlock key={index} className="h-34" />
+								<SkeletonBlock key={index} className="h-34 bg-zinc-900 border-2 border-zinc-800" />
 							))
 						) : (
 							mergedChallenges.map((challenge) => (
@@ -185,27 +188,17 @@ function AdminHomeRoute() {
 							))
 						)}
 					</div>
-				</GlassCard>
-
-				<Link
-					to="/"
-					className="inline-flex items-center justify-center text-sm font-semibold text-muted-foreground"
-				>
-					Back to landing
-				</Link>
-			</PageShell>
-
-			<div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-4 pb-4">
-				<div className="mx-auto max-w-5xl bg-gradient-to-t from-background via-background/90 to-transparent pt-6">
-					<Button
-						className="pointer-events-auto w-full"
-						onClick={() => setIsSheetOpen(true)}
-					>
-						<Plus className="h-4 w-4" />
-						New challenge
-					</Button>
 				</div>
-			</div>
+
+				<div className="flex justify-center pt-4 pb-12">
+					<Link
+						to="/"
+						className="inline-flex items-center justify-center text-sm font-bold uppercase tracking-widest text-zinc-500 hover:text-primary transition-colors"
+					>
+						← BACK TO LANDING
+					</Link>
+				</div>
+			</PageShell>
 
 			<BottomSheet
 				open={isSheetOpen}
@@ -214,58 +207,74 @@ function AdminHomeRoute() {
 						setIsSheetOpen(false);
 					}
 				}}
-				title="New challenge"
-				description="Start with a title and sport. You can add questions on the next screen."
+				title="NEW CHALLENGE"
+				description="START WITH A TITLE AND SPORT. ADD QUESTIONS NEXT."
 			>
-				<form className="flex flex-col gap-4" onSubmit={handleCreateChallenge}>
-					<label className="flex flex-col gap-2">
-						<span className="text-sm font-semibold text-foreground">
-							Challenge title
+				<form className="flex flex-col gap-6 pt-4" onSubmit={handleCreateChallenge}>
+					<label className="flex flex-col gap-3">
+						<span className="text-sm font-bold text-white uppercase tracking-wider">
+							CHALLENGE TITLE
 						</span>
 						<Input
 							value={title}
 							onChange={(event) => setTitle(event.target.value)}
-							placeholder="Sunday derby predictions"
+							placeholder="SUNDAY DERBY PREDICTIONS"
 							maxLength={80}
+							className="h-14 text-lg border-2 border-zinc-700 focus-visible:border-primary focus-visible:ring-0 rounded-none bg-zinc-950 placeholder:text-zinc-600"
 						/>
 					</label>
 
 					<div className="flex flex-col gap-3">
-						<label className="text-sm font-semibold text-foreground">
-							Sport
+						<label className="text-sm font-bold text-white uppercase tracking-wider">
+							SPORT
 						</label>
-						<div className="flex flex-wrap gap-2">
-							{SPORT_SUGGESTIONS.map((suggestion) => (
-								<button
-									key={suggestion}
-									type="button"
-									onClick={() => setSport(suggestion === "Other" ? "" : suggestion)}
-									className="inline-flex min-h-10 items-center rounded-xl border border-border bg-secondary px-4 text-sm font-semibold text-foreground hover:border-primary/30 hover:bg-accent transition-colors"
-								>
-									{suggestion}
-								</button>
-							))}
+						<div className="flex flex-wrap gap-3 mb-2">
+							{SPORT_SUGGESTIONS.map((suggestion) => {
+								const isSelected =
+									sport === suggestion ||
+									(suggestion === "Other" &&
+										sport !== "" &&
+										!SPORT_SUGGESTIONS.includes(
+											sport as (typeof SPORT_SUGGESTIONS)[number],
+										));
+								return (
+									<button
+										key={suggestion}
+										type="button"
+										onClick={() => setSport(suggestion === "Other" ? "" : suggestion)}
+										className={`inline-flex min-h-12 items-center border-2 px-5 text-sm font-bold uppercase tracking-wide transition-colors ${
+											isSelected
+												? "border-primary bg-primary text-black"
+												: "border-zinc-800 bg-zinc-950 text-zinc-400 hover:border-primary hover:text-white"
+										}`}
+									>
+										{suggestion}
+									</button>
+								);
+							})}
 						</div>
 						<Input
 							value={sport}
 							onChange={(event) => setSport(event.target.value)}
-							placeholder="Cricket"
+							placeholder="CRICKET"
 							maxLength={32}
+							className="h-14 text-lg border-2 border-zinc-700 focus-visible:border-primary focus-visible:ring-0 rounded-none bg-zinc-950 placeholder:text-zinc-600"
 						/>
 					</div>
 
-					<div className="flex flex-col gap-3 pt-2">
-						<Button type="submit" className="w-full" disabled={isSubmitting}>
-							{isSubmitting ? "Creating..." : "Create challenge"}
+					<div className="flex flex-col gap-4 mt-4">
+						<Button type="submit" size="lg" className="w-full text-lg" disabled={isSubmitting}>
+							{isSubmitting ? "CREATING..." : "CREATE CHALLENGE"}
 						</Button>
 						<Button
 							type="button"
 							variant="outline"
-							className="w-full"
+							size="lg"
+							className="w-full text-lg border-zinc-800 text-zinc-400 hover:text-white"
 							onClick={() => setIsSheetOpen(false)}
 							disabled={isSubmitting}
 						>
-							Cancel
+							CANCEL
 						</Button>
 					</div>
 				</form>

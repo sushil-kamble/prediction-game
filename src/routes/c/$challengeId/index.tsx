@@ -35,7 +35,6 @@ type PublicQuestion = {
 	_id: string;
 	text: string;
 	options: string[];
-	pointValue: number;
 	order: number;
 };
 
@@ -78,17 +77,17 @@ function PlayerChallengeRoute() {
 
 	const participant = useQuery(
 		api.challenges.getParticipant,
-		uuid ? { challengeId, uuid } : "skip",
+		uuid ? { challengeId, uuid } : "skip"
 	);
 
 	const [storedParticipantId, setStoredParticipantIdState] = useState<
 		string | null | undefined
 	>(undefined);
 	const participantId =
-		participant?._id.toString() ?? (storedParticipantId ?? null);
+		participant?._id.toString() ?? storedParticipantId ?? null;
 	const participantPredictions = useQuery(
 		api.challenges.getParticipantPredictions,
-		participantId ? { challengeId, participantId } : "skip",
+		participantId ? { challengeId, participantId } : "skip"
 	);
 
 	const [nickname, setNickname] = useState("");
@@ -119,7 +118,7 @@ function PlayerChallengeRoute() {
 			Object.values(participantPredictions).map((prediction) => [
 				prediction.questionId.toString(),
 				prediction.selectedOptionIndex,
-			]),
+			])
 		);
 
 		if (Object.keys(submittedSelections).length > 0) {
@@ -133,7 +132,7 @@ function PlayerChallengeRoute() {
 			(challenge?.questions ?? [])
 				.slice()
 				.sort((a, b) => a.order - b.order) as Array<PublicQuestion>,
-		[challenge],
+		[challenge]
 	);
 
 	const hasSubmitted =
@@ -163,7 +162,9 @@ function PlayerChallengeRoute() {
 				description="This link doesn't point to an active challenge."
 			>
 				<Button asChild>
-					<Link to="/" className="no-underline">Back home</Link>
+					<Link to="/" className="no-underline">
+						Back home
+					</Link>
 				</Button>
 			</FullScreenState>
 		);
@@ -207,7 +208,10 @@ function PlayerChallengeRoute() {
 		}
 
 		if (!uuid) {
-			showToast("Couldn't initialize a player ID. Refresh and try again.", "error");
+			showToast(
+				"Couldn't initialize a player ID. Refresh and try again.",
+				"error"
+			);
 			return;
 		}
 
@@ -267,7 +271,7 @@ function PlayerChallengeRoute() {
 
 	return (
 		<>
-			<PageShell className="gap-6 py-5 sm:py-8">
+			<PageShell className="gap-6 pt-0 pb-8">
 				<PlayerHeader
 					title={challenge.title}
 					sport={challenge.sport}
@@ -278,15 +282,16 @@ function PlayerChallengeRoute() {
 				{!participant ? (
 					<GlassCard className="px-5 py-6 sm:px-8">
 						<SectionEyebrow>Join the challenge</SectionEyebrow>
-						<h1 className="font-display text-4xl leading-none text-foreground sm:text-5xl">
+						<h1 className="font-display text-foreground text-4xl leading-none sm:text-5xl">
 							{challenge.title}
 						</h1>
-						<p className="mt-4 text-base leading-7 text-muted-foreground">
-							One shot. No changes. Lock your picks before the results start moving.
+						<p className="text-muted-foreground mt-4 text-base leading-7">
+							One shot. No changes. Lock your picks before the results start
+							moving.
 						</p>
 						<form className="mt-6 flex flex-col gap-4" onSubmit={handleJoin}>
 							<label className="flex flex-col gap-2">
-								<span className="text-sm font-semibold text-foreground">
+								<span className="text-foreground text-sm font-semibold">
 									Nickname
 								</span>
 								<Input
@@ -304,12 +309,12 @@ function PlayerChallengeRoute() {
 				) : hasSubmitted ? (
 					<GlassCard className="px-5 py-6 sm:px-8">
 						<SectionEyebrow>Locked in</SectionEyebrow>
-						<h1 className="font-display text-4xl leading-none text-foreground sm:text-5xl">
+						<h1 className="font-display text-foreground text-4xl leading-none sm:text-5xl">
 							You're locked in
 						</h1>
-						<p className="mt-4 text-base leading-7 text-muted-foreground">
-							Your picks are sealed. Watch the live leaderboard while the admin marks
-							correct answers.
+						<p className="text-muted-foreground mt-4 text-base leading-7">
+							Your picks are sealed. Watch the live leaderboard while the admin
+							marks correct answers.
 						</p>
 						<Button className="mt-6" asChild>
 							<Link
@@ -322,22 +327,19 @@ function PlayerChallengeRoute() {
 							</Link>
 						</Button>
 
-						<div className="mt-6 grid gap-4">
+						<div className="mt-6 mb-20 grid gap-4">
 							{orderedQuestions.map((question) => (
 								<div
 									key={question._id}
-									className="rounded-xl border border-border bg-secondary/30 p-4"
+									className="border-border bg-secondary/30 rounded-xl border p-4"
 								>
 									<div className="flex items-start justify-between gap-3">
 										<div>
-											<p className="text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground">
-												{question.pointValue} pts
-											</p>
-											<h2 className="mt-2 text-lg font-semibold leading-7 text-foreground">
+											<h2 className="text-foreground text-lg leading-7 font-semibold">
 												{question.text}
 											</h2>
 										</div>
-										<Lock className="h-4 w-4 text-primary/60" />
+										<Lock className="text-primary/60 h-4 w-4" />
 									</div>
 									<div className="mt-4 grid gap-3">
 										{question.options.map((option, optionIndex) => (
@@ -349,7 +351,8 @@ function PlayerChallengeRoute() {
 												}
 											>
 												<span className="flex items-center gap-2">
-													{selections[question._id.toString()] === optionIndex ? (
+													{selections[question._id.toString()] ===
+													optionIndex ? (
 														<Check className="h-4 w-4" />
 													) : null}
 													{option}
@@ -364,22 +367,19 @@ function PlayerChallengeRoute() {
 				) : (
 					<>
 						<InlineNotice tone="success">
-							You're joined as <strong>{participant.nickname}</strong>. Answer every
-							question, then submit all picks at once.
+							You're joined as <strong>{participant.nickname}</strong>. Answer
+							every question, then submit all picks at once.
 						</InlineNotice>
 
-						<div className="grid gap-4">
+						<div className="mb-20 grid gap-4">
 							{orderedQuestions.map((question) => (
 								<div
 									key={question._id}
-									className="rounded-xl border border-border bg-secondary/30 p-4"
+									className="border-border bg-secondary/30 rounded-xl border p-4"
 								>
 									<div className="flex items-start justify-between gap-3">
 										<div>
-											<p className="text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground">
-												{question.pointValue} pts
-											</p>
-											<h2 className="mt-2 text-lg font-semibold leading-7 text-foreground">
+											<h2 className="text-foreground text-lg leading-7 font-semibold">
 												{question.text}
 											</h2>
 										</div>
@@ -408,12 +408,12 @@ function PlayerChallengeRoute() {
 
 			{participant && !hasSubmitted ? (
 				<div className="fixed inset-x-0 bottom-0 z-40 px-4 pb-4">
-					<div className="mx-auto flex max-w-5xl items-center gap-3 rounded-xl border border-border bg-card/95 px-4 py-4 shadow-[0_20px_60px_rgba(0,0,0,0.4)] backdrop-blur-xl">
+					<div className="border-border bg-card/95 mx-auto flex max-w-5xl items-center gap-3 rounded-xl border px-4 py-4 shadow-[0_20px_60px_rgba(0,0,0,0.4)] backdrop-blur-xl">
 						<div className="flex-1">
-							<p className="m-0 text-xs font-bold uppercase tracking-[0.22em] text-muted-foreground">
+							<p className="text-muted-foreground m-0 text-xs font-bold tracking-[0.22em] uppercase">
 								Progress
 							</p>
-							<p className="mt-1 text-sm font-semibold text-foreground">
+							<p className="text-foreground mt-1 text-sm font-semibold">
 								{answeredCount} of {orderedQuestions.length} answered
 							</p>
 						</div>
@@ -434,7 +434,11 @@ function PlayerChallengeRoute() {
 				description="You can't change them after this. Make sure every answer looks right before you confirm."
 				footer={
 					<>
-						<Button className="w-full" onClick={handleSubmitPredictions} disabled={isSubmitting}>
+						<Button
+							className="w-full"
+							onClick={handleSubmitPredictions}
+							disabled={isSubmitting}
+						>
 							{isSubmitting ? "Submitting..." : "Confirm picks"}
 						</Button>
 						<Button
@@ -469,11 +473,11 @@ function PlayerHeader({
 	challengeId: string;
 }) {
 	return (
-		<GlassCard className="sticky top-4 z-20 px-5 py-4 backdrop-blur-xl">
+		<div className="sticky top-0 z-20 -mx-4 mb-2 border-b-2 border-zinc-800 bg-black px-4 pt-4 pb-4 sm:pt-6">
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<SectionEyebrow>PredictGame</SectionEyebrow>
-					<h1 className="font-display text-3xl leading-none text-foreground">
+					<SectionEyebrow className="mb-2">PredictGame</SectionEyebrow>
+					<h1 className="font-display text-3xl leading-none text-white uppercase">
 						{title}
 					</h1>
 					<div className="mt-3 flex flex-wrap gap-2">
@@ -481,7 +485,7 @@ function PlayerHeader({
 						<StatusBadge status={status} />
 					</div>
 				</div>
-				<Button variant="outline" asChild>
+				<Button variant="outline" asChild className="w-full sm:w-auto">
 					<Link
 						to="/c/$challengeId/leaderboard"
 						params={{ challengeId }}
@@ -491,7 +495,7 @@ function PlayerHeader({
 					</Link>
 				</Button>
 			</div>
-		</GlassCard>
+		</div>
 	);
 }
 

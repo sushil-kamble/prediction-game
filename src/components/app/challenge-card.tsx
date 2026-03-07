@@ -19,30 +19,26 @@ export function ChallengeCard({
 	sport,
 	status,
 	to,
-	label = "Open challenge",
+	label = "OPEN CHALLENGE",
 }: ChallengeCardProps) {
 	return (
-		<Link
-			to={to}
-			params={{ challengeId }}
-			className="block no-underline"
-		>
-			<div className="glass-card group px-5 py-5 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_24px_72px_rgba(139,92,246,0.12)]">
-				<div className="flex items-start gap-4">
-					<div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-700/20 text-2xl ring-1 ring-primary/20">
+		<Link to={to} params={{ challengeId }} className="group block no-underline">
+			<div className="group-hover:border-primary border-2 border-zinc-800 bg-zinc-950 p-6 transition-all group-hover:-translate-y-1 group-hover:bg-zinc-900 group-hover:shadow-[6px_6px_0px_0px_#ccff00]">
+				<div className="flex items-start gap-5">
+					<div className="flex h-16 w-16 shrink-0 items-center justify-center border-2 border-white bg-black text-3xl">
 						{getSportEmoji(sport)}
 					</div>
 					<div className="min-w-0 flex-1">
-						<div className="flex flex-wrap gap-2">
+						<div className="mb-3 flex flex-wrap gap-2">
 							<SportBadge sport={sport} />
 							<StatusBadge status={status} />
 						</div>
-						<h3 className="mt-3 text-lg font-semibold leading-7 text-foreground">
+						<h3 className="text-xl leading-tight font-bold tracking-wide text-white uppercase">
 							{title}
 						</h3>
-						<p className="mt-2 flex items-center gap-2 text-sm font-semibold text-primary">
+						<p className="text-primary mt-4 flex items-center gap-2 text-sm font-bold tracking-widest uppercase">
 							{label}
-							<ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+							<ArrowUpRight className="h-5 w-5 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
 						</p>
 					</div>
 				</div>

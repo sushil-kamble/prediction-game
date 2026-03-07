@@ -32,7 +32,7 @@ function LeaderboardRoute() {
 	const leaderboard = useQuery(api.challenges.getLeaderboard, { challengeId });
 	const participant = useQuery(
 		api.challenges.getParticipant,
-		uuid ? { challengeId, uuid } : "skip",
+		uuid ? { challengeId, uuid } : "skip"
 	);
 
 	const [storedParticipantId, setStoredParticipantId] = useState<
@@ -51,10 +51,11 @@ function LeaderboardRoute() {
 		return () => window.removeEventListener("scroll", onScroll);
 	}, []);
 
-	const participantId = participant?._id.toString() ?? (storedParticipantId ?? null);
+	const participantId =
+		participant?._id.toString() ?? storedParticipantId ?? null;
 	const participantPredictions = useQuery(
 		api.challenges.getParticipantPredictions,
-		participantId ? { challengeId, participantId } : "skip",
+		participantId ? { challengeId, participantId } : "skip"
 	);
 
 	const hasSubmitted =
@@ -83,20 +84,16 @@ function LeaderboardRoute() {
 	const currentPlayerUuid = uuid;
 
 	return (
-		<PageShell className="gap-6 py-5 sm:py-8">
-			<GlassCard
-				className={`sticky top-4 z-20 px-5 transition-all ${
-					isCollapsed ? "py-3" : "py-4"
-				}`}
-			>
+		<PageShell className="gap-6 pt-0 pb-8">
+			<div className="sticky top-0 z-20 -mx-4 mb-2 border-b-2 border-zinc-800 bg-black px-4 pt-4 pb-4 sm:pt-6">
 				<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 					<div>
-						<SectionEyebrow className={isCollapsed ? "hidden" : undefined}>
+						<SectionEyebrow className={isCollapsed ? "hidden" : "mb-2"}>
 							Live leaderboard
 						</SectionEyebrow>
 						<h1
-							className={`font-display leading-none text-foreground transition-all ${
-								isCollapsed ? "text-2xl" : "text-3xl sm:text-4xl"
+							className={`font-display leading-none text-white uppercase transition-all ${
+								isCollapsed ? "text-2xl" : "text-3xl"
 							}`}
 						>
 							{challenge.title}
@@ -105,29 +102,32 @@ function LeaderboardRoute() {
 							<SportBadge sport={challenge.sport} />
 							<StatusBadge status={leaderboard.status} />
 							{leaderboard.status === "scoring" ? (
-								<Badge variant="outline" className="gap-1.5 border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider text-emerald-400">
-									<Activity className="h-3 w-3" />
+								<Badge
+									variant="outline"
+									className="gap-2 rounded-none border-2 border-emerald-400 bg-emerald-400/10 px-3 py-1 text-xs font-bold tracking-widest text-emerald-400 uppercase"
+								>
+									<Activity className="h-4 w-4" />
 									Live
 								</Badge>
 							) : null}
 						</div>
 					</div>
-					<Button variant="outline" asChild>
+					<Button variant="outline" asChild className="w-full sm:w-auto">
 						<Link
 							to="/c/$challengeId"
 							params={{ challengeId }}
 							className="no-underline"
 						>
-							Back to picks
+							BACK TO PICKS
 						</Link>
 					</Button>
 				</div>
-			</GlassCard>
+			</div>
 
 			{!hasSubmitted ? (
 				<InlineNotice tone="warning">
-					You haven't predicted yet. The leaderboard is still visible, and you can
-					jump back to lock in your picks.
+					You haven't predicted yet. The leaderboard is still visible, and you
+					can jump back to lock in your picks.
 					<div className="mt-4">
 						<Button variant="outline" size="sm" asChild>
 							<Link
@@ -145,10 +145,10 @@ function LeaderboardRoute() {
 
 			{leaderboard.rows.length === 0 ? (
 				<GlassCard className="px-5 py-8 text-center">
-					<h2 className="font-display text-3xl text-foreground">
+					<h2 className="font-display text-foreground text-3xl">
 						No players yet
 					</h2>
-					<p className="mt-3 text-sm leading-7 text-muted-foreground">
+					<p className="text-muted-foreground mt-3 text-sm leading-7">
 						Once players join, their rows will appear here in real time.
 					</p>
 				</GlassCard>
@@ -157,13 +157,16 @@ function LeaderboardRoute() {
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 						<div>
 							<SectionEyebrow>Scoreboard</SectionEyebrow>
-							<h2 className="font-display text-3xl text-foreground">
+							<h2 className="font-display text-foreground text-3xl">
 								Current ranking
 							</h2>
 						</div>
 						{leaderboard.answeredQuestionCount === 0 ? (
-							<Badge variant="outline" className="gap-1.5 border-yellow-500/30 bg-yellow-500/10 px-3 py-1.5 text-sm font-semibold text-yellow-300">
-								<span className="h-2 w-2 rounded-full bg-yellow-400 animate-pulse" />
+							<Badge
+								variant="outline"
+								className="gap-1.5 border-yellow-500/30 bg-yellow-500/10 px-3 py-1.5 text-sm font-semibold text-yellow-300"
+							>
+								<span className="h-2 w-2 animate-pulse rounded-full bg-yellow-400" />
 								Waiting for results...
 							</Badge>
 						) : null}
@@ -184,26 +187,28 @@ function LeaderboardRoute() {
 									}`}
 								>
 									<div className="flex items-center gap-4">
-										<div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-lg font-extrabold ${
-											isTopThree
-												? "bg-gradient-to-br from-violet-500/20 to-purple-700/20 text-primary"
-												: "bg-secondary text-muted-foreground"
-										}`}>
+										<div
+											className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-lg font-extrabold ${
+												isTopThree
+													? "text-primary bg-gradient-to-br from-violet-500/20 to-purple-700/20"
+													: "bg-secondary text-muted-foreground"
+											}`}
+										>
 											#{row.rank}
 										</div>
 										<div className="min-w-0 flex-1">
-											<p className="truncate text-base font-semibold text-foreground">
+											<p className="text-foreground truncate text-base font-semibold">
 												{row.nickname}
 											</p>
-											<p className="mt-1 text-xs font-bold uppercase tracking-[0.22em] text-muted-foreground">
+											<p className="text-muted-foreground mt-1 text-xs font-bold tracking-[0.22em] uppercase">
 												{row.correctCount}/{leaderboard.questionCount} correct
 											</p>
 										</div>
 										<div className="text-right">
-											<p className="font-display text-3xl leading-none text-foreground">
+											<p className="font-display text-foreground text-3xl leading-none">
 												{row.score}
 											</p>
-											<p className="mt-1 text-xs font-bold uppercase tracking-[0.22em] text-muted-foreground">
+											<p className="text-muted-foreground mt-1 text-xs font-bold tracking-[0.22em] uppercase">
 												points
 											</p>
 										</div>
