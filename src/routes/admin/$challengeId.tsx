@@ -6,9 +6,12 @@ import {
 	ArrowLeft,
 	Check,
 	Copy,
+	Minus,
 	Pencil,
+	Plus,
 	Share2,
 	Trash2,
+	X,
 } from "lucide-react";
 import {
 	BottomSheet,
@@ -26,6 +29,7 @@ import {
 	StatusBadge,
 	Textarea,
 } from "#/components/app/ui";
+import { PodiumSection } from "#/components/app/results";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -64,6 +68,7 @@ export const Route = createFileRoute("/admin/$challengeId")({
 function AdminChallengeRoute() {
 	const { challengeId } = Route.useParams();
 	const challenge = useQuery(api.challenges.getAdminChallenge, { challengeId });
+	const leaderboard = useQuery(api.challenges.getLeaderboard, { challengeId });
 	const addQuestion = useMutation(api.challenges.addQuestion);
 	const updateQuestion = useMutation(api.challenges.updateQuestion);
 	const deleteQuestion = useMutation(api.challenges.deleteQuestion);
@@ -71,19 +76,21 @@ function AdminChallengeRoute() {
 	const unpublishChallenge = useMutation(api.challenges.unpublishChallenge);
 	const markCorrectAnswer = useMutation(api.challenges.markCorrectAnswer);
 	const clearAnswerMarkings = useMutation(api.challenges.clearAnswerMarkings);
-	const closeChallenge = useMutation(api.challenges.closeChallenge);
+	const announceWinners = useMutation(api.challenges.announceWinners);
 	const { showToast } = useToast();
 
 	const [adminSecret, setAdminSecret] = useState<string | null | undefined>(
-		undefined,
+		undefined
 	);
 	const [questionText, setQuestionText] = useState("");
 	const [options, setOptions] = useState(["", ""]);
 	const [pointValue, setPointValue] = useState(1);
-	const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
+	const [editingQuestionId, setEditingQuestionId] = useState<string | null>(
+		null
+	);
 	const [deleteTarget, setDeleteTarget] = useState<AdminQuestion | null>(null);
 	const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
-	const [isCloseConfirmOpen, setIsCloseConfirmOpen] = useState(false);
+	const [isAnnounceConfirmOpen, setIsAnnounceConfirmOpen] = useState(false);
 	const [isUnpublishConfirmOpen, setIsUnpublishConfirmOpen] = useState(false);
 	const [isClearFormConfirmOpen, setIsClearFormConfirmOpen] = useState(false);
 	const [isClearMarkingsConfirmOpen, setIsClearMarkingsConfirmOpen] =
@@ -91,7 +98,7 @@ function AdminChallengeRoute() {
 	const [isSaving, setIsSaving] = useState(false);
 	const [isPublishing, setIsPublishing] = useState(false);
 	const [isUnpublishing, setIsUnpublishing] = useState(false);
-	const [isClosing, setIsClosing] = useState(false);
+	const [isAnnouncing, setIsAnnouncing] = useState(false);
 	const [isClearingMarkings, setIsClearingMarkings] = useState(false);
 	const [isSharing, setIsSharing] = useState(false);
 
@@ -104,7 +111,7 @@ function AdminChallengeRoute() {
 			editingQuestionId &&
 			challenge &&
 			!challenge.questions.some(
-				(question) => question._id.toString() === editingQuestionId,
+				(question) => question._id.toString() === editingQuestionId
 			)
 		) {
 			resetForm();
@@ -131,10 +138,10 @@ function AdminChallengeRoute() {
 
 	const orderedQuestions = useMemo(
 		() =>
-			(challenge?.questions ?? []).slice().sort((a, b) => a.order - b.order) as Array<
-				AdminQuestion
-			>,
-		[challenge],
+			(challenge?.questions ?? [])
+				.slice()
+				.sort((a, b) => a.order - b.order) as Array<AdminQuestion>,
+		[challenge]
 	);
 	const isFormPristine =
 		!editingQuestionId &&
@@ -143,28 +150,44 @@ function AdminChallengeRoute() {
 		options.every((option) => option.trim().length === 0) &&
 		pointValue === 1;
 
-	if (challenge === undefined || adminSecret === undefined) {
+	if (
+		challenge === undefined ||
+		leaderboard === undefined ||
+		adminSecret === undefined
+	) {
 		return <AdminChallengeSkeleton />;
 	}
 
-	if (challenge === null) {
+	if (challenge === null || leaderboard === null) {
 		return (
 			<FullScreenState
 				title="Challenge not found"
 				description="This admin link doesn't map to a challenge on the current Convex deployment."
 			>
 				<Button asChild>
-					<Link to="/admin" className="no-underline">Back to admin</Link>
+					<Link to="/admin" className="no-underline">
+						Back to admin
+					</Link>
 				</Button>
 			</FullScreenState>
 		);
 	}
 
+	const canAnnounceWinners =
+		challenge.status !== "draft" &&
+		!challenge.winnersAnnouncedAt &&
+		challenge.questions.length > 0 &&
+		answeredCount === challenge.questions.length &&
+		leaderboard.submittedParticipantCount > 0;
+
 	async function handleSaveQuestion(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 
 		if (!adminSecret) {
-			showToast("Admin access is only available on the device that created this challenge.", "error");
+			showToast(
+				"Admin access is only available on the device that created this challenge.",
+				"error"
+			);
 			return;
 		}
 		if (challenge?.status === "closed") {
@@ -221,7 +244,10 @@ function AdminChallengeRoute() {
 
 	async function handlePublish() {
 		if (!adminSecret) {
-			showToast("This browser doesn't have admin access for the challenge.", "error");
+			showToast(
+				"This browser doesn't have admin access for the challenge.",
+				"error"
+			);
 			return;
 		}
 
@@ -233,7 +259,7 @@ function AdminChallengeRoute() {
 				wasDraft
 					? "Challenge published and questions frozen."
 					: "Questions frozen.",
-				"success",
+				"success"
 			);
 		} catch (error) {
 			showToast(getErrorMessage(error), "error");
@@ -244,7 +270,10 @@ function AdminChallengeRoute() {
 
 	async function handleUnpublish() {
 		if (!adminSecret) {
-			showToast("This browser doesn't have admin access for the challenge.", "error");
+			showToast(
+				"This browser doesn't have admin access for the challenge.",
+				"error"
+			);
 			return;
 		}
 
@@ -306,9 +335,15 @@ function AdminChallengeRoute() {
 		}
 	}
 
-	async function handleMarkAnswer(questionIdToScore: string, optionIndex: number) {
+	async function handleMarkAnswer(
+		questionIdToScore: string,
+		optionIndex: number
+	) {
 		if (!adminSecret) {
-			showToast("This browser doesn't have admin access for the challenge.", "error");
+			showToast(
+				"This browser doesn't have admin access for the challenge.",
+				"error"
+			);
 			return;
 		}
 
@@ -324,20 +359,20 @@ function AdminChallengeRoute() {
 		}
 	}
 
-	async function handleCloseChallenge() {
+	async function handleAnnounceWinners() {
 		if (!adminSecret) {
 			return;
 		}
 
-		setIsClosing(true);
+		setIsAnnouncing(true);
 		try {
-			await closeChallenge({ challengeId, adminSecret });
-			showToast("Challenge closed.", "success");
-			setIsCloseConfirmOpen(false);
+			await announceWinners({ challengeId, adminSecret });
+			showToast("Winners announced.", "success");
+			setIsAnnounceConfirmOpen(false);
 		} catch (error) {
 			showToast(getErrorMessage(error), "error");
 		} finally {
-			setIsClosing(false);
+			setIsAnnouncing(false);
 		}
 	}
 
@@ -345,7 +380,7 @@ function AdminChallengeRoute() {
 		if (!adminSecret) {
 			showToast(
 				"This browser doesn't have admin access for the challenge.",
-				"error",
+				"error"
 			);
 			return;
 		}
@@ -392,7 +427,7 @@ function AdminChallengeRoute() {
 								Back
 							</Link>
 						</Button>
-						<span className="rounded-lg border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.22em] text-primary">
+						<span className="border-primary/20 bg-primary/10 text-primary rounded-lg border px-3 py-1 text-xs font-extrabold tracking-[0.22em] uppercase">
 							Admin mode
 						</span>
 					</div>
@@ -400,7 +435,7 @@ function AdminChallengeRoute() {
 					<div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 						<div>
 							<SectionEyebrow>Challenge</SectionEyebrow>
-							<h1 className="font-display text-4xl leading-none text-foreground sm:text-5xl">
+							<h1 className="font-display text-foreground text-4xl leading-none sm:text-5xl">
 								{challenge.title}
 							</h1>
 							<div className="mt-4 flex flex-wrap gap-2">
@@ -424,38 +459,32 @@ function AdminChallengeRoute() {
 				{!hasAdminAccess ? (
 					<InlineNotice tone="warning">
 						Admin access is device-specific in this version. You can view the
-						challenge here, but editing and scoring require the browser that created
-						it.
+						challenge here, but editing and scoring require the browser that
+						created it.
 					</InlineNotice>
 				) : null}
 
 				{hasAdminAccess ? (
 					<>
 						<GlassCard className="px-5 py-6 sm:px-8">
-							<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-								<div>
-									<SectionEyebrow>
-										{editingQuestionId ? "Edit question" : "Question composer"}
-									</SectionEyebrow>
-									<h2 className="font-display text-3xl text-foreground">
-										{editingQuestionId
-											? "Update the pick card"
-											: "Add a new pick card"}
-									</h2>
-								</div>
-							</div>
+							<SectionEyebrow>
+								{editingQuestionId ? "Editing question" : "New question"}
+							</SectionEyebrow>
 
 							{!isQuestionEditUnlocked ? (
-								<InlineNotice tone="warning" className="mt-5">
+								<InlineNotice tone="warning" className="mt-1">
 									{challenge.status === "closed"
-										? "Challenge is closed. Question editing is permanently locked."
-										: "Questions are frozen. Click unpublish in the publish section to unlock editing."}
+										? "Challenge closed. Editing is permanently locked."
+										: "Questions are frozen. Unpublish to unlock editing."}
 								</InlineNotice>
 							) : null}
 
-							<form className="mt-5 flex flex-col gap-4" onSubmit={handleSaveQuestion}>
-								<label className="flex flex-col gap-2">
-									<span className="text-sm font-semibold text-foreground">
+							<form
+								className="mt-4 flex flex-col gap-5"
+								onSubmit={handleSaveQuestion}
+							>
+								<label className="flex flex-col gap-1.5">
+									<span className="text-muted-foreground text-xs font-bold tracking-widest uppercase">
 										Question
 									</span>
 									<Textarea
@@ -466,111 +495,120 @@ function AdminChallengeRoute() {
 									/>
 								</label>
 
-								<div className="flex flex-col gap-3">
+								<div className="flex flex-col gap-2">
 									<div className="flex items-center justify-between">
-										<span className="text-sm font-semibold text-foreground">
+										<span className="text-muted-foreground text-xs font-bold tracking-widest uppercase">
 											Options
 										</span>
-										<Button
-											type="button"
-											variant="ghost"
-											size="sm"
-											onClick={() =>
-												setOptions((current) =>
-													current.length >= 5 ? current : [...current, ""],
-												)
-											}
-											disabled={!isQuestionEditUnlocked}
-										>
-											Add option
-										</Button>
+										{options.length < 5 ? (
+											<button
+												type="button"
+												onClick={() =>
+													setOptions((current) => [...current, ""])
+												}
+												disabled={!isQuestionEditUnlocked}
+												className="text-primary hover:text-primary/80 flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase transition-colors disabled:opacity-40"
+											>
+												<Plus className="h-3.5 w-3.5" />
+												Add
+											</button>
+										) : null}
 									</div>
 
 									{options.map((option, index) => (
-										<div key={index} className="flex items-center gap-3">
+										<div key={index} className="flex items-center gap-2">
+											<span className="text-muted-foreground w-5 shrink-0 text-center text-xs font-bold">
+												{index + 1}
+											</span>
 											<Input
 												value={option}
 												onChange={(event) =>
 													setOptions((current) =>
 														current.map((item, itemIndex) =>
-															itemIndex === index ? event.target.value : item,
-														),
+															itemIndex === index ? event.target.value : item
+														)
 													)
 												}
 												placeholder={`Option ${index + 1}`}
 												disabled={!isQuestionEditUnlocked}
+												className="flex-1"
 											/>
-											<Button
+											<button
 												type="button"
-												variant="outline"
-												size="sm"
 												onClick={() =>
 													setOptions((current) =>
 														current.length <= 2
 															? current
 															: current.filter(
-																	(_, itemIndex) => itemIndex !== index,
-															),
+																	(_, itemIndex) => itemIndex !== index
+																)
 													)
 												}
-												disabled={!isQuestionEditUnlocked || options.length <= 2}
+												disabled={
+													!isQuestionEditUnlocked || options.length <= 2
+												}
+												className="hover:border-destructive hover:text-destructive flex h-10 w-10 shrink-0 items-center justify-center border-2 border-zinc-700 text-zinc-500 transition-colors disabled:opacity-30"
 											>
-												Remove
-											</Button>
+												<X className="h-4 w-4" />
+											</button>
 										</div>
 									))}
 								</div>
 
+								{/* Points — compact inline row */}
 								<div className="flex items-center gap-3">
-									<Button
-										type="button"
-										variant="outline"
-										onClick={() =>
-											setPointValue((current) => Math.max(1, current - 1))
-										}
-										disabled={!isQuestionEditUnlocked}
-									>
-										-1
-									</Button>
-									<div className="flex-1 rounded-xl border border-border bg-secondary/50 px-4 py-3 text-center">
-										<p className="m-0 text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground">
-											Point value
-										</p>
-										<p className="mt-1 text-2xl font-semibold text-foreground">
-											{pointValue}
-										</p>
+									<span className="text-muted-foreground text-xs font-bold tracking-widest uppercase">
+										Points
+									</span>
+									<div className="flex items-center">
+										<button
+											type="button"
+											onClick={() =>
+												setPointValue((current) => Math.max(1, current - 1))
+											}
+											disabled={!isQuestionEditUnlocked || pointValue <= 1}
+											className="hover:border-primary hover:text-primary flex h-10 w-10 items-center justify-center border-2 border-r-0 border-zinc-700 bg-black text-zinc-400 transition-colors disabled:opacity-30"
+										>
+											<Minus className="h-4 w-4" />
+										</button>
+										<div className="flex h-10 min-w-[3rem] items-center justify-center border-2 border-zinc-700 bg-zinc-900 px-3">
+											<span className="text-foreground text-lg font-bold tabular-nums">
+												{pointValue}
+											</span>
+										</div>
+										<button
+											type="button"
+											onClick={() => setPointValue((current) => current + 1)}
+											disabled={!isQuestionEditUnlocked}
+											className="hover:border-primary hover:text-primary flex h-10 w-10 items-center justify-center border-2 border-l-0 border-zinc-700 bg-black text-zinc-400 transition-colors disabled:opacity-30"
+										>
+											<Plus className="h-4 w-4" />
+										</button>
 									</div>
-									<Button
-										type="button"
-										variant="outline"
-										onClick={() => setPointValue((current) => current + 1)}
-										disabled={!isQuestionEditUnlocked}
-									>
-										+1
-									</Button>
 								</div>
 
-								<Button
-									type="submit"
-									className="w-full"
-									disabled={isSaving || !isQuestionEditUnlocked}
-								>
-									{isSaving
-										? "Saving..."
-										: editingQuestionId
-											? "Update question"
-											: "Add question"}
-								</Button>
-								<div className="flex justify-end">
+								<div className="flex items-center gap-3">
 									<Button
-										type="button"
-										variant="outline"
-										className="w-full sm:w-auto"
-										onClick={() => setIsClearFormConfirmOpen(true)}
-										disabled={!isQuestionEditUnlocked || isFormPristine}
+										type="submit"
+										className="flex-1"
+										disabled={isSaving || !isQuestionEditUnlocked}
 									>
-										Clear form
+										{isSaving
+											? "Saving..."
+											: editingQuestionId
+												? "Update question"
+												: "Add question"}
 									</Button>
+									{!isFormPristine ? (
+										<Button
+											type="button"
+											variant="outline"
+											onClick={() => setIsClearFormConfirmOpen(true)}
+											disabled={!isQuestionEditUnlocked}
+										>
+											Clear
+										</Button>
+									) : null}
 								</div>
 							</form>
 						</GlassCard>
@@ -579,18 +617,20 @@ function AdminChallengeRoute() {
 							<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 								<div>
 									<SectionEyebrow>Publish</SectionEyebrow>
-									<h2 className="font-display text-3xl text-foreground">
+									<h2 className="font-display text-foreground text-3xl">
 										Launch the challenge
 									</h2>
 								</div>
-									{challenge.status === "closed" ? (
-										<Button className="sm:w-auto" disabled>
-											Challenge closed
-										</Button>
-									) : challenge.status === "draft" ? (
-										<Button
-											className="sm:w-auto"
-											onClick={handlePublish}
+								{challenge.status === "closed" ? (
+									<Button className="sm:w-auto" disabled>
+										{challenge.winnersAnnouncedAt
+											? "Winners announced"
+											: "Challenge closed"}
+									</Button>
+								) : challenge.status === "draft" ? (
+									<Button
+										className="sm:w-auto"
+										onClick={handlePublish}
 										disabled={challenge.questions.length === 0 || isPublishing}
 									>
 										{isPublishing ? "Publishing..." : "Publish challenge"}
@@ -617,6 +657,14 @@ function AdminChallengeRoute() {
 							{challenge.questions.length === 0 ? (
 								<InlineNotice tone="warning" className="mt-5">
 									Add at least one question before publishing.
+								</InlineNotice>
+							) : null}
+
+							{challenge.winnersAnnouncedAt ? (
+								<InlineNotice tone="success" className="mt-5">
+									Winners were announced on{" "}
+									{formatTimestamp(challenge.winnersAnnouncedAt)}. The board is
+									now locked in final mode.
 								</InlineNotice>
 							) : null}
 
@@ -649,7 +697,7 @@ function AdminChallengeRoute() {
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 						<div>
 							<SectionEyebrow>Question list</SectionEyebrow>
-							<h2 className="font-display text-3xl text-foreground">
+							<h2 className="font-display text-foreground text-3xl">
 								Current stack
 							</h2>
 						</div>
@@ -673,49 +721,45 @@ function AdminChallengeRoute() {
 							orderedQuestions.map((question, index) => (
 								<div
 									key={question._id}
-									className="rounded-xl border border-border bg-secondary/30 p-4"
+									className="border-border bg-secondary/30 rounded-xl border p-4"
 								>
 									<div className="flex items-start justify-between gap-3">
-										<div>
-											<p className="text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground">
-												Question {index + 1}
-											</p>
-											<h3 className="mt-2 text-lg font-semibold leading-7 text-foreground">
-												{question.text}
-											</h3>
+										<div className="min-w-0 flex-1">
+											<div className="flex items-center gap-3">
+												<span className="text-muted-foreground shrink-0 text-xs font-bold tracking-widest">
+													Q{index + 1}
+												</span>
+												<h3 className="text-foreground text-base leading-6 font-semibold">
+													{question.text}
+												</h3>
+											</div>
+											<div className="mt-2 flex items-center gap-3 text-xs font-bold text-zinc-500">
+												<span>{question.options.length} options</span>
+												<span className="text-zinc-700">·</span>
+												<span>
+													{question.pointValue}{" "}
+													{question.pointValue === 1 ? "pt" : "pts"}
+												</span>
+											</div>
 										</div>
 										{hasAdminAccess && isQuestionEditUnlocked ? (
-											<div className="flex items-center gap-2">
-												<Button
-													variant="outline"
-													size="sm"
+											<div className="flex shrink-0 items-center gap-1">
+												<button
+													type="button"
 													onClick={() => beginEditing(question)}
+													className="hover:border-primary hover:text-primary flex h-9 w-9 items-center justify-center border-2 border-zinc-700 text-zinc-400 transition-colors"
 												>
 													<Pencil className="h-3.5 w-3.5" />
-													Edit
-												</Button>
-												<Button
-													variant="outline"
-													size="sm"
+												</button>
+												<button
+													type="button"
 													onClick={() => setDeleteTarget(question)}
+													className="hover:border-destructive hover:text-destructive flex h-9 w-9 items-center justify-center border-2 border-zinc-700 text-zinc-400 transition-colors"
 												>
 													<Trash2 className="h-3.5 w-3.5" />
-													Delete
-												</Button>
+												</button>
 											</div>
 										) : null}
-									</div>
-									<div className="mt-4 flex flex-wrap gap-2">
-										<MetricPill
-											label="Options"
-											value={String(question.options.length)}
-											className="min-w-[9rem]"
-										/>
-										<MetricPill
-											label="Points"
-											value={`${question.pointValue} pts`}
-											className="min-w-[9rem]"
-										/>
 									</div>
 								</div>
 							))
@@ -723,53 +767,77 @@ function AdminChallengeRoute() {
 					</div>
 				</GlassCard>
 
-				{hasAdminAccess &&
-				(challenge.status === "open" || challenge.status === "scoring") && (
-					<GlassCard className="px-5 py-6 sm:px-8">
-						<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-							<div>
-								<SectionEyebrow>Answer marking</SectionEyebrow>
-								<h2 className="font-display text-3xl text-foreground">
-									Score the board live
-								</h2>
-							</div>
-							<MetricPill
-								label="Progress"
-								value={`${answeredCount}/${orderedQuestions.length}`}
-								className="sm:min-w-[12rem]"
-							/>
-						</div>
+				{leaderboard.podium.length > 0 ? (
+					<PodiumSection
+						podium={leaderboard.podium}
+						currentPlayerUuid={null}
+						winnersAnnounced={leaderboard.winnersAnnounced}
+						elevateGold={false}
+						title={
+							leaderboard.winnersAnnounced
+								? "Announced winners"
+								: "Announcement preview"
+						}
+					/>
+				) : null}
 
-						<div className="mt-6 grid gap-4">
-							{orderedQuestions.map((question) => (
-								<div
-									key={question._id}
-									className="rounded-xl border border-border bg-secondary/30 p-4"
-								>
-									<h3 className="text-lg font-semibold leading-7 text-foreground">
-										{question.text}
-									</h3>
-									<div className="mt-4 grid gap-3">
-										{question.options.map((option, optionIndex) => (
-											<OptionButton
-												key={option}
-												onClick={() =>
-													handleMarkAnswer(question._id.toString(), optionIndex)
-												}
-												correct={question.correctOptionIndex === optionIndex}
-											>
-												<span className="flex items-center gap-2">
-													{question.correctOptionIndex === optionIndex ? (
-														<Check className="h-4 w-4" />
-													) : null}
-													{option}
-												</span>
-											</OptionButton>
-										))}
-									</div>
+				{hasAdminAccess &&
+					(challenge.status === "open" || challenge.status === "scoring") && (
+						<GlassCard className="px-5 py-6 sm:px-8">
+							<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+								<div>
+									<SectionEyebrow>Answer marking</SectionEyebrow>
+									<h2 className="font-display text-foreground text-3xl">
+										Score the board live
+									</h2>
 								</div>
-							))}
-						</div>
+								<MetricPill
+									label="Progress"
+									value={`${answeredCount}/${orderedQuestions.length}`}
+									className="sm:min-w-[12rem]"
+								/>
+							</div>
+
+							<div className="mt-6 grid gap-4">
+								{orderedQuestions.map((question) => (
+									<div
+										key={question._id}
+										className="border-border bg-secondary/30 rounded-xl border p-4"
+									>
+										<h3 className="text-foreground text-lg leading-7 font-semibold">
+											{question.text}
+										</h3>
+										<div className="mt-4 grid gap-3">
+											{question.options.map((option, optionIndex) => (
+												<OptionButton
+													key={option}
+													onClick={() =>
+														handleMarkAnswer(
+															question._id.toString(),
+															optionIndex
+														)
+													}
+													correct={question.correctOptionIndex === optionIndex}
+												>
+													<span className="flex items-center gap-2">
+														{question.correctOptionIndex === optionIndex ? (
+															<Check className="h-4 w-4" />
+														) : null}
+														{option}
+													</span>
+												</OptionButton>
+											))}
+										</div>
+									</div>
+								))}
+							</div>
+
+							{!canAnnounceWinners ? (
+								<InlineNotice tone="warning" className="mt-6">
+									Finish scoring every question and make sure at least one
+									player has submitted before announcing winners.
+								</InlineNotice>
+							) : null}
 
 							<div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 								<Button variant="outline" asChild className="w-full sm:w-auto">
@@ -787,16 +855,16 @@ function AdminChallengeRoute() {
 										Clear answer markings
 									</Button>
 									<Button
-										variant="destructive"
 										className="w-full sm:w-auto"
-										onClick={() => setIsCloseConfirmOpen(true)}
+										onClick={() => setIsAnnounceConfirmOpen(true)}
+										disabled={!canAnnounceWinners}
 									>
-										Close challenge
+										Announce winners
 									</Button>
 								</div>
 							</div>
-					</GlassCard>
-				)}
+						</GlassCard>
+					)}
 			</PageShell>
 
 			<BottomSheet
@@ -806,7 +874,11 @@ function AdminChallengeRoute() {
 				description="This removes the pick card from the draft challenge."
 				footer={
 					<>
-						<Button variant="destructive" className="w-full" onClick={handleDeleteQuestion}>
+						<Button
+							variant="destructive"
+							className="w-full"
+							onClick={handleDeleteQuestion}
+						>
 							Delete question
 						</Button>
 						<Button
@@ -827,7 +899,11 @@ function AdminChallengeRoute() {
 				description="On mobile this uses the native share sheet. Desktop falls back to clipboard."
 				footer={
 					<>
-						<Button className="w-full" onClick={handleShare} disabled={isSharing}>
+						<Button
+							className="w-full"
+							onClick={handleShare}
+							disabled={isSharing}
+						>
 							{isSharing ? "Sharing..." : "Share now"}
 						</Button>
 						<Button
@@ -870,26 +946,28 @@ function AdminChallengeRoute() {
 				</AlertDialogContent>
 			</AlertDialog>
 
-			<AlertDialog open={isCloseConfirmOpen} onOpenChange={setIsCloseConfirmOpen}>
+			<AlertDialog
+				open={isAnnounceConfirmOpen}
+				onOpenChange={setIsAnnounceConfirmOpen}
+			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Close challenge?</AlertDialogTitle>
+						<AlertDialogTitle>Announce winners?</AlertDialogTitle>
 						<AlertDialogDescription>
-							Players can still view the leaderboard, but new submissions will be
-							blocked.
+							This will lock the challenge, snapshot the current top three, and
+							switch players into the final results experience.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel className="w-full sm:w-auto">
-							Keep open
+							Not yet
 						</AlertDialogCancel>
 						<AlertDialogAction
-							variant="destructive"
 							className="w-full sm:w-auto"
-							onClick={handleCloseChallenge}
-							disabled={isClosing}
+							onClick={handleAnnounceWinners}
+							disabled={isAnnouncing}
 						>
-							{isClosing ? "Closing..." : "Close challenge"}
+							{isAnnouncing ? "Announcing..." : "Announce winners"}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
@@ -903,8 +981,8 @@ function AdminChallengeRoute() {
 					<AlertDialogHeader>
 						<AlertDialogTitle>Unpublish questions?</AlertDialogTitle>
 						<AlertDialogDescription>
-							This unlocks question editing for admins. The challenge link stays the
-							same and users can continue answering.
+							This unlocks question editing for admins. The challenge link stays
+							the same and users can continue answering.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
@@ -969,4 +1047,11 @@ function getErrorMessage(error: unknown) {
 	}
 
 	return "Something went wrong. Please try again.";
+}
+
+function formatTimestamp(timestamp: number) {
+	return new Intl.DateTimeFormat(undefined, {
+		dateStyle: "medium",
+		timeStyle: "short",
+	}).format(new Date(timestamp));
 }

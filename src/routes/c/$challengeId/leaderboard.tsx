@@ -12,9 +12,12 @@ import {
 	SportBadge,
 	StatusBadge,
 } from "#/components/app/ui";
+import { PodiumSection, ResultHero } from "#/components/app/results";
 import { Button } from "#/components/ui/button";
 import { Badge } from "#/components/ui/badge";
 import { api } from "#/lib/api";
+import { formatAccuracy } from "#/lib/results";
+import { cn } from "#/lib/utils";
 import { useClientUUID } from "#/lib/use-client-uuid";
 import { getStoredParticipantId } from "#/lib/storage";
 
@@ -29,7 +32,10 @@ function LeaderboardRoute() {
 	const { challengeId } = Route.useParams();
 	const uuid = useClientUUID();
 	const challenge = useQuery(api.challenges.getChallenge, { challengeId });
-	const leaderboard = useQuery(api.challenges.getLeaderboard, { challengeId });
+	const leaderboard = useQuery(api.challenges.getLeaderboard, {
+		challengeId,
+		uuid: uuid ?? undefined,
+	});
 	const participant = useQuery(
 		api.challenges.getParticipant,
 		uuid ? { challengeId, uuid } : "skip"
@@ -82,6 +88,7 @@ function LeaderboardRoute() {
 	}
 
 	const currentPlayerUuid = uuid;
+	const remainingRows = leaderboard.rows.filter((row) => row.medal === null);
 
 	return (
 		<PageShell className="gap-6 pt-0 pb-8">
@@ -124,7 +131,16 @@ function LeaderboardRoute() {
 				</div>
 			</div>
 
-			{!hasSubmitted ? (
+			{leaderboard.winnersAnnounced && leaderboard.currentParticipant ? (
+				<ResultHero
+					challengeTitle={challenge.title}
+					currentParticipant={leaderboard.currentParticipant}
+					celebrationMessage={leaderboard.celebrationMessage}
+					participantCount={leaderboard.participantCount}
+				/>
+			) : null}
+
+			{!hasSubmitted && !leaderboard.winnersAnnounced ? (
 				<InlineNotice tone="warning">
 					You haven't predicted yet. The leaderboard is still visible, and you
 					can jump back to lock in your picks.
@@ -153,68 +169,84 @@ function LeaderboardRoute() {
 					</p>
 				</GlassCard>
 			) : (
-				<GlassCard className="px-5 py-6 sm:px-8">
-					<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-						<div>
-							<SectionEyebrow>Scoreboard</SectionEyebrow>
-							<h2 className="font-display text-foreground text-3xl">
-								Current ranking
-							</h2>
-						</div>
-						{leaderboard.answeredQuestionCount === 0 ? (
-							<Badge
-								variant="outline"
-								className="gap-1.5 border-yellow-500/30 bg-yellow-500/10 px-3 py-1.5 text-sm font-semibold text-yellow-300"
-							>
-								<span className="h-2 w-2 animate-pulse rounded-full bg-yellow-400" />
-								Waiting for results...
-							</Badge>
-						) : null}
-					</div>
-
-					<div className="mt-6 grid gap-3">
-						{leaderboard.rows.map((row) => {
-							const isCurrentPlayer = row.uuid === currentPlayerUuid;
-							const isTopThree = row.rank <= 3;
-
-							return (
-								<div
-									key={`${row.uuid}-${row.rank}`}
-									className={`rounded-xl border px-4 py-4 transition ${
-										isCurrentPlayer
-											? "border-primary/40 bg-primary/8 shadow-[0_0_24px_rgba(139,92,246,0.08)]"
-											: "border-border bg-secondary/30"
-									}`}
+				<>
+					<PodiumSection
+						podium={leaderboard.podium}
+						currentPlayerUuid={currentPlayerUuid}
+						winnersAnnounced={leaderboard.winnersAnnounced}
+					/>
+					<GlassCard className="px-5 py-6 sm:px-8">
+						<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+							<div>
+								<SectionEyebrow>Scoreboard</SectionEyebrow>
+								<h2 className="font-display text-foreground text-3xl">
+									{leaderboard.winnersAnnounced
+										? "Full final ranking"
+										: "Live ranking"}
+								</h2>
+							</div>
+							{leaderboard.answeredQuestionCount === 0 ? (
+								<Badge
+									variant="outline"
+									className="gap-1.5 border-yellow-500/30 bg-yellow-500/10 px-3 py-1.5 text-sm font-semibold text-yellow-300"
 								>
-									<div className="flex items-center gap-4">
-										<div
-											className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-lg font-extrabold ${
-												isTopThree
-													? "text-primary bg-gradient-to-br from-violet-500/20 to-purple-700/20"
-													: "bg-secondary text-muted-foreground"
-											}`}
-										>
-											#{row.rank}
-										</div>
-										<div className="min-w-0 flex-1">
-											<p className="text-foreground truncate text-base font-semibold">
-												{row.nickname}
-											</p>
-										</div>
-										<div className="text-right">
-											<p className="font-display text-foreground text-3xl leading-none">
-												{row.score}
-											</p>
-											<p className="text-muted-foreground mt-1 text-xs font-bold tracking-[0.22em] uppercase">
-												points
-											</p>
-										</div>
-									</div>
+									<span className="h-2 w-2 animate-pulse rounded-full bg-yellow-400" />
+									Waiting for results...
+								</Badge>
+							) : null}
+						</div>
+
+						<div className="mt-6 grid gap-3">
+							{remainingRows.length === 0 ? (
+								<div className="border-2 border-zinc-800 bg-zinc-950/70 px-5 py-6">
+									<p className="text-sm leading-6 text-zinc-400">
+										All ranked players are already featured in the podium
+										section.
+									</p>
 								</div>
-							);
-						})}
-					</div>
-				</GlassCard>
+							) : (
+								remainingRows.map((row) => {
+									const isCurrentPlayer = row.uuid === currentPlayerUuid;
+
+									return (
+										<div
+											key={`${row.uuid}-${row.rank}`}
+											className={cn(
+												"border-2 px-4 py-4 transition",
+												isCurrentPlayer
+													? "border-primary/50 bg-primary/10 shadow-[0_0_28px_rgba(204,255,0,0.08)]"
+													: "border-zinc-800 bg-zinc-950/50"
+											)}
+										>
+											<div className="flex items-center gap-4">
+												<div className="flex h-11 w-11 shrink-0 items-center justify-center border-2 border-zinc-700 bg-black text-base font-extrabold text-zinc-300">
+													#{row.rank}
+												</div>
+												<div className="min-w-0 flex-1">
+													<p className="text-foreground truncate text-base font-semibold">
+														{row.nickname}
+													</p>
+													<p className="mt-1 text-xs font-bold tracking-[0.22em] text-zinc-500 uppercase">
+														{row.correctCount} right ·{" "}
+														{formatAccuracy(row.accuracy)} acc
+													</p>
+												</div>
+												<div className="text-right">
+													<p className="font-display text-foreground text-3xl leading-none">
+														{row.score}
+													</p>
+													<p className="text-muted-foreground mt-1 text-xs font-bold tracking-[0.22em] uppercase">
+														pts
+													</p>
+												</div>
+											</div>
+										</div>
+									);
+								})
+							)}
+						</div>
+					</GlassCard>
+				</>
 			)}
 		</PageShell>
 	);

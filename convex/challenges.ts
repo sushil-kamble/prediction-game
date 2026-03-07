@@ -2,6 +2,18 @@ import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import {
+	buildLeaderboardRows,
+	MEDAL_TIERS,
+	normalizeComparableValue,
+	pickWinnerMessage,
+	validateNicknameInput,
+	validateOptionalUsernameInput,
+} from "../shared/game-results";
+import type {
+	MedalTier,
+	WinnerMessageRecord,
+} from "../shared/game-results";
 
 type ReadCtx = QueryCtx | MutationCtx;
 
@@ -17,6 +29,135 @@ const predictionInput = v.object({
 	selectedOptionIndex: v.number(),
 });
 
+const DEFAULT_WINNER_MESSAGES: WinnerMessageRecord[] = [
+	{
+		medal: "gold",
+		sportKey: null,
+		order: 1,
+		title: "You owned the moment.",
+		body: "Every call landed with champion energy. This board remembers who set the standard.",
+	},
+	{
+		medal: "gold",
+		sportKey: null,
+		order: 2,
+		title: "First place fits you well.",
+		body: "You saw the swing of the game before everyone else and finished on top with room to celebrate.",
+	},
+	{
+		medal: "gold",
+		sportKey: "cricket",
+		order: 3,
+		title: "A captain's innings from start to finish.",
+		body: "You read the match like a veteran, timed every call, and walked away with the crown.",
+	},
+	{
+		medal: "gold",
+		sportKey: "football",
+		order: 4,
+		title: "You played this board like a title run.",
+		body: "Composed, clinical, and impossible to catch once you hit your stride.",
+	},
+	{
+		medal: "gold",
+		sportKey: "basketball",
+		order: 5,
+		title: "Pure closer behavior.",
+		body: "You stacked bucket after bucket of correct calls and left the rest of the league chasing shadows.",
+	},
+	{
+		medal: "gold",
+		sportKey: "f1",
+		order: 6,
+		title: "Pole position to the checkered flag.",
+		body: "You called the race with elite precision and never let the lead wobble.",
+	},
+	{
+		medal: "silver",
+		sportKey: null,
+		order: 7,
+		title: "A seriously sharp finish.",
+		body: "You were right in the thick of it all the way through and earned a result worth talking about.",
+	},
+	{
+		medal: "silver",
+		sportKey: null,
+		order: 8,
+		title: "Runner-up, but never background.",
+		body: "This was a high-level performance. One more bounce and you might have been untouchable.",
+	},
+	{
+		medal: "silver",
+		sportKey: "cricket",
+		order: 9,
+		title: "Built like a calm chase under lights.",
+		body: "You stayed close to the target all night and finished with a scorecard to be proud of.",
+	},
+	{
+		medal: "silver",
+		sportKey: "football",
+		order: 10,
+		title: "You were one move away from lifting it.",
+		body: "Brilliant reads, brave picks, and a finish that deserves real applause.",
+	},
+	{
+		medal: "silver",
+		sportKey: "basketball",
+		order: 11,
+		title: "You kept the pressure on until the final buzzer.",
+		body: "That was a deep run with real poise. Silver looks earned here, not given.",
+	},
+	{
+		medal: "silver",
+		sportKey: "f1",
+		order: 12,
+		title: "Front row finish. Serious pace.",
+		body: "You stayed in the hunt from lights out to the final lap and crossed the line with style.",
+	},
+	{
+		medal: "bronze",
+		sportKey: null,
+		order: 13,
+		title: "Podium secured.",
+		body: "You backed yourself, made enough elite calls, and left this game with something worth smiling about.",
+	},
+	{
+		medal: "bronze",
+		sportKey: null,
+		order: 14,
+		title: "Top three and fully deserved.",
+		body: "You stayed in the fight, held your nerve, and turned solid instincts into a podium finish.",
+	},
+	{
+		medal: "bronze",
+		sportKey: "cricket",
+		order: 15,
+		title: "A podium built on nerve and timing.",
+		body: "You picked the key overs, trusted your read, and finished with bronze in hand.",
+	},
+	{
+		medal: "bronze",
+		sportKey: "football",
+		order: 16,
+		title: "You earned your place on the podium.",
+		body: "Strong calls, sharp instincts, and enough big moments won you a medal.",
+	},
+	{
+		medal: "bronze",
+		sportKey: "basketball",
+		order: 17,
+		title: "Clutch enough to make the podium.",
+		body: "You stayed alive possession after possession and turned that grit into a bronze finish.",
+	},
+	{
+		medal: "bronze",
+		sportKey: "f1",
+		order: 18,
+		title: "A podium drive all the way through.",
+		body: "You kept the pace honest, avoided mistakes, and finished with a medal to show for it.",
+	},
+];
+
 function trimValue(value: string) {
 	return value.trim();
 }
@@ -30,11 +171,11 @@ function requireTrimmed(value: string, field: string) {
 }
 
 function validateNickname(nickname: string) {
-	const trimmed = requireTrimmed(nickname, "Nickname");
-	if (trimmed.length < 2 || trimmed.length > 20) {
-		throw new Error("Nickname must be between 2 and 20 characters.");
-	}
-	return trimmed;
+	return validateNicknameInput(nickname);
+}
+
+function validateUsername(username: string | undefined, nickname: string) {
+	return validateOptionalUsernameInput(username, nickname);
 }
 
 function validatePointValue(pointValue: number) {
@@ -200,6 +341,249 @@ function serializePublicQuestion(
 	}
 
 	return questionWithoutPoints;
+}
+
+async function ensureWinnerMessagesSeeded(ctx: MutationCtx) {
+	const existing = await ctx.db.query("winnerMessages").first();
+	if (existing) {
+		return;
+	}
+
+	await Promise.all(
+		DEFAULT_WINNER_MESSAGES.map((message) =>
+			ctx.db.insert("winnerMessages", {
+				medal: message.medal,
+				sportKey: message.sportKey ?? undefined,
+				order: message.order,
+				title: message.title,
+				body: message.body,
+			}),
+		),
+	);
+}
+
+async function findParticipantByUuid(
+	ctx: ReadCtx,
+	challengeId: Id<"challenges">,
+	uuid: string,
+) {
+	const normalizedUuid = requireTrimmed(uuid, "UUID");
+	const directParticipant = await ctx.db
+		.query("participants")
+		.withIndex("by_challenge_uuid", (q) =>
+			q.eq("challengeId", challengeId).eq("uuid", normalizedUuid),
+		)
+		.unique();
+
+	if (directParticipant) {
+		return directParticipant;
+	}
+
+	const deviceLink = await ctx.db
+		.query("participantDevices")
+		.withIndex("by_challenge_uuid", (q) =>
+			q.eq("challengeId", challengeId).eq("uuid", normalizedUuid),
+		)
+		.unique();
+
+	if (!deviceLink) {
+		return null;
+	}
+
+	const participant = await ctx.db.get(deviceLink.participantId);
+	if (!participant || participant.challengeId !== challengeId) {
+		return null;
+	}
+
+	return participant;
+}
+
+async function requireParticipantByUsername(
+	ctx: ReadCtx,
+	challengeId: Id<"challenges">,
+	username: string,
+) {
+	const usernameLower = normalizeComparableValue(requireTrimmed(username, "Username"));
+	const participant = await ctx.db
+		.query("participants")
+		.withIndex("by_challenge_username", (q) =>
+			q.eq("challengeId", challengeId).eq("usernameLower", usernameLower),
+		)
+		.unique();
+
+	if (!participant) {
+		throw new Error("No player was found with that username.");
+	}
+
+	return participant;
+}
+
+async function linkDeviceToParticipant(
+	ctx: MutationCtx,
+	challengeId: Id<"challenges">,
+	participant: Doc<"participants">,
+	uuid: string,
+) {
+	const normalizedUuid = requireTrimmed(uuid, "UUID");
+
+	if (participant.uuid === normalizedUuid) {
+		return;
+	}
+
+	const existingDeviceLink = await ctx.db
+		.query("participantDevices")
+		.withIndex("by_challenge_uuid", (q) =>
+			q.eq("challengeId", challengeId).eq("uuid", normalizedUuid),
+		)
+		.unique();
+
+	if (existingDeviceLink?.participantId === participant._id) {
+		return;
+	}
+
+	if (existingDeviceLink && existingDeviceLink.participantId !== participant._id) {
+		throw new Error("That device is already linked to another player.");
+	}
+
+	await ctx.db.insert("participantDevices", {
+		challengeId,
+		participantId: participant._id,
+		uuid: normalizedUuid,
+		linkedAt: Date.now(),
+	});
+}
+
+function getSubmittedParticipantIds(rows: Array<{ participantId: string; submittedAt: number | null }>) {
+	return rows
+		.filter((row) => row.submittedAt !== null)
+		.slice(0, MEDAL_TIERS.length)
+		.map((row) => row.participantId);
+}
+
+async function buildChallengeLeaderboard(
+	ctx: ReadCtx,
+	challengeId: Id<"challenges">,
+	options?: { uuid?: string },
+) {
+	const challenge = await requireChallenge(ctx, challengeId);
+	const [participants, questions, predictions, winnerMessages] = await Promise.all([
+		ctx.db
+			.query("participants")
+			.withIndex("by_challenge", (q) => q.eq("challengeId", challengeId))
+			.collect(),
+		listChallengeQuestions(ctx, challengeId),
+		ctx.db
+			.query("predictions")
+			.withIndex("by_challenge", (q) => q.eq("challengeId", challengeId))
+			.collect(),
+		ctx.db.query("winnerMessages").collect(),
+	]);
+
+	const rows = buildLeaderboardRows({
+		participants: participants.map((participant) => ({
+			participantId: participant._id.toString(),
+			nickname: participant.nickname,
+			uuid: participant.uuid,
+			joinedAt: participant.joinedAt,
+			submittedAt: participant.submittedAt ?? null,
+		})),
+		questions: questions.map((question) => ({
+			questionId: question._id.toString(),
+			pointValue: question.pointValue,
+			correctOptionIndex: question.correctOptionIndex,
+		})),
+		predictions: predictions.map((prediction) => ({
+			participantId: prediction.participantId.toString(),
+			questionId: prediction.questionId.toString(),
+			selectedOptionIndex: prediction.selectedOptionIndex,
+		})),
+		winnerParticipantIds:
+			challenge.winnerParticipantIds?.map((participantId) =>
+				participantId.toString(),
+			) ?? null,
+	});
+
+	const podium = rows
+		.filter((row) => row.medal !== null)
+		.slice(0, MEDAL_TIERS.length)
+		.map((row) => ({
+			rank: row.rank,
+			medal: row.medal as MedalTier,
+			nickname: row.nickname,
+			score: row.score,
+			correctCount: row.correctCount,
+			totalAnswered: row.totalAnswered,
+			accuracy: row.accuracy,
+			uuid: row.uuid,
+		}));
+
+	let currentParticipant = null;
+	let celebrationMessage = null;
+
+	if (options?.uuid) {
+		const participant = await findParticipantByUuid(ctx, challengeId, options.uuid);
+		if (participant) {
+			const row = rows.find(
+				(candidate) => candidate.participantId === participant._id.toString(),
+			);
+
+			if (row) {
+				currentParticipant = {
+					nickname: row.nickname,
+					rank: row.rank,
+					medal: row.medal,
+					score: row.score,
+					correctCount: row.correctCount,
+					totalAnswered: row.totalAnswered,
+					accuracy: row.accuracy,
+					isWinner: row.medal !== null,
+				};
+
+				if (challenge.winnersAnnouncedAt && row.medal) {
+					const selectedMessage = pickWinnerMessage(
+						winnerMessages.map((message) => ({
+							medal: message.medal,
+							sportKey: message.sportKey ?? null,
+							order: message.order,
+							title: message.title,
+							body: message.body,
+						})),
+						{
+							medal: row.medal,
+							sport: challenge.sport,
+							seed: `${challenge._id.toString()}:${participant._id.toString()}:${row.medal}`,
+						},
+					);
+
+					if (selectedMessage) {
+						celebrationMessage = {
+							medal: selectedMessage.medal,
+							title: selectedMessage.title,
+							body: selectedMessage.body,
+						};
+					}
+				}
+			}
+		}
+	}
+
+	return {
+		challenge,
+		rows,
+		podium,
+		currentParticipant,
+		celebrationMessage,
+		participantCount: participants.length,
+		submittedParticipantCount: participants.filter(
+			(participant) => participant.submittedAt !== undefined,
+		).length,
+		answeredQuestionCount: questions.filter(
+			(question) => question.correctOptionIndex !== null,
+		).length,
+		questionCount: questions.length,
+		winnersAnnounced: challenge.winnersAnnouncedAt !== undefined,
+		winnersAnnouncedAt: challenge.winnersAnnouncedAt ?? null,
+	};
 }
 
 export const createChallenge = mutation({
@@ -464,6 +848,7 @@ export const joinChallenge = mutation({
 		challengeId: v.string(),
 		uuid: v.string(),
 		nickname: v.string(),
+		username: v.optional(v.string()),
 	},
 	returns: v.id("participants"),
 	handler: async (ctx, args) => {
@@ -483,25 +868,85 @@ export const joinChallenge = mutation({
 
 			const uuid = requireTrimmed(args.uuid, "UUID");
 			const nickname = validateNickname(args.nickname);
-			const existing = await ctx.db
-				.query("participants")
-				.withIndex("by_challenge_uuid", (q) =>
-					q.eq("challengeId", challengeId).eq("uuid", uuid),
-				)
-				.unique();
+			const { username, usernameLower } = validateUsername(
+				args.username,
+				nickname,
+			);
+			const existing = await findParticipantByUuid(ctx, challengeId, uuid);
 
 			if (existing) {
 				return existing._id;
+			}
+
+			if (usernameLower) {
+				const existingUsername = await ctx.db
+					.query("participants")
+					.withIndex("by_challenge_username", (q) =>
+						q.eq("challengeId", challengeId).eq("usernameLower", usernameLower),
+					)
+					.unique();
+
+				if (existingUsername) {
+					throw new Error("That username is already taken in this challenge.");
+				}
 			}
 
 			return await ctx.db.insert("participants", {
 				challengeId,
 				uuid,
 				nickname,
+				username,
+				usernameLower,
 				joinedAt: Date.now(),
 			});
 		} catch (error) {
 			logMutationError("joinChallenge", args, error);
+			throw error;
+		}
+	},
+});
+
+export const recoverParticipantByUsername = mutation({
+	args: {
+		challengeId: v.string(),
+		uuid: v.string(),
+		username: v.string(),
+	},
+	returns: v.object({
+		participantId: v.id("participants"),
+		nickname: v.string(),
+	}),
+	handler: async (ctx, args) => {
+		try {
+			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+			if (!challengeId) {
+				throw new Error("Challenge not found.");
+			}
+
+			const challenge = await requireChallenge(ctx, challengeId);
+			if (challenge.status === "draft") {
+				throw new Error("This challenge is not open yet.");
+			}
+
+			const participant = await requireParticipantByUsername(
+				ctx,
+				challengeId,
+				args.username,
+			);
+
+			await linkDeviceToParticipant(
+				ctx,
+				challengeId,
+				participant,
+				requireTrimmed(args.uuid, "UUID"),
+			);
+
+			return {
+				participantId: participant._id,
+				nickname: participant.nickname,
+			};
+		} catch (error) {
+			logMutationError("recoverParticipantByUsername", args, error);
 			throw error;
 		}
 	},
@@ -603,6 +1048,7 @@ export const submitPredictions = mutation({
 				});
 			}),
 		);
+		await ctx.db.patch(participantId, { submittedAt });
 		} catch (error) {
 			logMutationError("submitPredictions", args, error);
 			throw error;
@@ -698,6 +1144,75 @@ export const clearAnswerMarkings = mutation({
 			}
 		} catch (error) {
 			logMutationError("clearAnswerMarkings", args, error);
+			throw error;
+		}
+	},
+});
+
+export const announceWinners = mutation({
+	args: {
+		challengeId: v.string(),
+		adminSecret: v.string(),
+	},
+	returns: v.object({
+		winnerParticipantIds: v.array(v.id("participants")),
+		announcedAt: v.number(),
+	}),
+	handler: async (ctx, args) => {
+		try {
+			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+			if (!challengeId) {
+				throw new Error("Challenge not found.");
+			}
+
+			const challenge = await requireAdminChallenge(
+				ctx,
+				challengeId,
+				requireTrimmed(args.adminSecret, "Admin secret"),
+			);
+
+			if (challenge.winnersAnnouncedAt) {
+				throw new Error("Winners have already been announced.");
+			}
+
+			const leaderboard = await buildChallengeLeaderboard(ctx, challengeId);
+			if (leaderboard.questionCount === 0) {
+				throw new Error("Add questions before announcing winners.");
+			}
+
+			if (leaderboard.answeredQuestionCount !== leaderboard.questionCount) {
+				throw new Error("Mark every correct answer before announcing winners.");
+			}
+
+			if (leaderboard.submittedParticipantCount === 0) {
+				throw new Error("At least one player must submit picks first.");
+			}
+
+			const winnerParticipantIds = getSubmittedParticipantIds(leaderboard.rows)
+				.map((participantId) => ctx.db.normalizeId("participants", participantId))
+				.filter((participantId): participantId is Id<"participants"> =>
+					Boolean(participantId),
+				);
+
+			if (winnerParticipantIds.length === 0) {
+				throw new Error("There are no submitted players to announce.");
+			}
+
+			await ensureWinnerMessagesSeeded(ctx);
+			const announcedAt = Date.now();
+			await ctx.db.patch(challengeId, {
+				status: "closed",
+				questionEditUnlocked: false,
+				winnersAnnouncedAt: announcedAt,
+				winnerParticipantIds,
+			});
+
+			return {
+				winnerParticipantIds,
+				announcedAt,
+			};
+		} catch (error) {
+			logMutationError("announceWinners", args, error);
 			throw error;
 		}
 	},
@@ -822,12 +1337,7 @@ export const getParticipant = query({
 			return null;
 		}
 
-		return await ctx.db
-			.query("participants")
-			.withIndex("by_challenge_uuid", (q) =>
-				q.eq("challengeId", challengeId).eq("uuid", trimValue(args.uuid)),
-			)
-			.unique();
+		return await findParticipantByUuid(ctx, challengeId, args.uuid);
 	},
 });
 
@@ -872,6 +1382,7 @@ export const getParticipantPredictions = query({
 export const getLeaderboard = query({
 	args: {
 		challengeId: v.string(),
+		uuid: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
@@ -879,105 +1390,31 @@ export const getLeaderboard = query({
 			return null;
 		}
 
-		const challenge = await ctx.db.get(challengeId);
-		if (!challenge) {
-			return null;
-		}
+		const leaderboard = await buildChallengeLeaderboard(ctx, challengeId, {
+			uuid: args.uuid,
+		});
 
-		const [participants, questions, predictions] = await Promise.all([
-			ctx.db
-				.query("participants")
-				.withIndex("by_challenge", (q) => q.eq("challengeId", challengeId))
-				.collect(),
-			listChallengeQuestions(ctx, challengeId),
-			ctx.db
-				.query("predictions")
-				.withIndex("by_challenge", (q) => q.eq("challengeId", challengeId))
-				.collect(),
-		]);
-
-		const questionMap = new Map<Id<"questions">, Doc<"questions">>(
-			questions.map((question: Doc<"questions">) => [question._id, question]),
-		);
-		const predictionGroups = new Map<
-			Id<"participants">,
-			Array<Doc<"predictions">>
-		>();
-
-		for (const prediction of predictions) {
-			const participantPredictions =
-				predictionGroups.get(prediction.participantId) ?? [];
-			participantPredictions.push(prediction);
-			predictionGroups.set(prediction.participantId, participantPredictions);
-		}
-
-		const rows = participants
-			.map((participant) => {
-				const participantPredictions =
-					predictionGroups.get(participant._id) ?? [];
-				let score = 0;
-				let correctCount = 0;
-
-				for (const prediction of participantPredictions) {
-					const question = questionMap.get(prediction.questionId);
-					if (!question || question.correctOptionIndex === null) {
-						continue;
-					}
-
-					if (prediction.selectedOptionIndex === question.correctOptionIndex) {
-						score += question.pointValue;
-						correctCount += 1;
-					}
-				}
-
-				return {
-					nickname: participant.nickname,
-					uuid: participant.uuid,
-					score,
-					correctCount,
-					totalAnswered: participantPredictions.length,
-					joinedAt: participant.joinedAt,
-				};
-			})
-			.sort((a, b) => {
-				if (b.score !== a.score) {
-					return b.score - a.score;
-				}
-				if (b.correctCount !== a.correctCount) {
-					return b.correctCount - a.correctCount;
-				}
-				if (a.nickname !== b.nickname) {
-					return a.nickname.localeCompare(b.nickname);
-				}
-				return a.joinedAt - b.joinedAt;
-			});
-
-		let lastScore: number | null = null;
-		let lastRank = 0;
-		const rankedRows = rows.map((row, index) => {
-			if (lastScore !== row.score) {
-				lastScore = row.score;
-				lastRank = index + 1;
-			}
-
-			return {
-				rank: lastRank,
+		return {
+			status: leaderboard.challenge.status,
+			participantCount: leaderboard.participantCount,
+			submittedParticipantCount: leaderboard.submittedParticipantCount,
+			answeredQuestionCount: leaderboard.answeredQuestionCount,
+			questionCount: leaderboard.questionCount,
+			winnersAnnounced: leaderboard.winnersAnnounced,
+			winnersAnnouncedAt: leaderboard.winnersAnnouncedAt,
+			podium: leaderboard.podium,
+			currentParticipant: leaderboard.currentParticipant,
+			celebrationMessage: leaderboard.celebrationMessage,
+			rows: leaderboard.rows.map((row) => ({
+				rank: row.rank,
+				medal: row.medal,
 				nickname: row.nickname,
 				uuid: row.uuid,
 				score: row.score,
 				correctCount: row.correctCount,
 				totalAnswered: row.totalAnswered,
-			};
-		});
-
-		return {
-			status: challenge.status,
-			participantCount: participants.length,
-			answeredQuestionCount: questions.filter(
-				(question: Doc<"questions">) => question.correctOptionIndex !== null,
-			).length,
-			questionCount: questions.length,
-			rows: rankedRows,
+				accuracy: row.accuracy,
+			})),
 		};
 	},
 });

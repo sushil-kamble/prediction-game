@@ -18,6 +18,11 @@ import {
 	SportBadge,
 	StatusBadge,
 } from "#/components/app/ui";
+import {
+	PodiumSection,
+	ResultHero,
+	ResultsRecoveryCard,
+} from "#/components/app/results";
 import { useToast } from "#/components/app/use-toast";
 import { api } from "#/lib/api";
 import { fetchChallengePreview } from "#/lib/convex-server";
@@ -68,11 +73,18 @@ export const Route = createFileRoute("/c/$challengeId/")({
 
 function PlayerChallengeRoute() {
 	const { challengeId } = Route.useParams();
+	const uuid = useClientUUID();
 	const challenge = useQuery(api.challenges.getChallenge, { challengeId });
+	const leaderboard = useQuery(api.challenges.getLeaderboard, {
+		challengeId,
+		uuid: uuid ?? undefined,
+	});
 	const joinChallenge = useMutation(api.challenges.joinChallenge);
+	const recoverParticipantByUsername = useMutation(
+		api.challenges.recoverParticipantByUsername,
+	);
 	const submitPredictions = useMutation(api.challenges.submitPredictions);
 	const { showToast } = useToast();
-	const uuid = useClientUUID();
 
 	const participant = useQuery(
 		api.challenges.getParticipant,
@@ -90,8 +102,11 @@ function PlayerChallengeRoute() {
 	);
 
 	const [nickname, setNickname] = useState("");
+	const [username, setUsername] = useState("");
+	const [recoveryUsername, setRecoveryUsername] = useState("");
 	const [selections, setSelections] = useState<Record<string, number>>({});
 	const [isJoining, setIsJoining] = useState(false);
+	const [isRecovering, setIsRecovering] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 	const hasInteracted = useRef(false);
@@ -144,6 +159,7 @@ function PlayerChallengeRoute() {
 
 	if (
 		challenge === undefined ||
+		leaderboard === undefined ||
 		uuid === null ||
 		storedParticipantId === undefined ||
 		(participantId !== null && participantPredictions === undefined)
@@ -166,6 +182,15 @@ function PlayerChallengeRoute() {
 		);
 	}
 
+	if (leaderboard === null) {
+		return (
+			<FullScreenState
+				title="Leaderboard unavailable"
+				description="This challenge couldn't load the latest standings."
+			/>
+		);
+	}
+
 	if (challenge.status === "draft") {
 		return (
 			<FullScreenState
@@ -176,6 +201,78 @@ function PlayerChallengeRoute() {
 	}
 
 	if (challenge.status === "closed") {
+			if (challenge.winnersAnnouncedAt) {
+				if (leaderboard.currentParticipant) {
+				return (
+					<PageShell className="gap-6 pt-0 pb-8">
+						<PlayerHeader
+							title={challenge.title}
+							sport={challenge.sport}
+							status={challenge.status}
+							challengeId={challengeId}
+						/>
+						<ResultHero
+							challengeTitle={challenge.title}
+							currentParticipant={leaderboard.currentParticipant}
+							celebrationMessage={leaderboard.celebrationMessage}
+							participantCount={leaderboard.participantCount}
+						/>
+						<PodiumSection
+							podium={leaderboard.podium}
+							currentPlayerUuid={uuid}
+							winnersAnnounced={leaderboard.winnersAnnounced}
+							title="The final podium"
+						/>
+						<Button asChild className="w-full sm:w-auto">
+							<Link
+								to="/c/$challengeId/leaderboard"
+								params={{ challengeId }}
+								className="no-underline"
+							>
+								Open full leaderboard
+							</Link>
+						</Button>
+					</PageShell>
+				);
+			}
+
+			return (
+				<PageShell className="gap-6 pt-0 pb-8">
+					<PlayerHeader
+						title={challenge.title}
+						sport={challenge.sport}
+						status={challenge.status}
+						challengeId={challengeId}
+					/>
+					<ResultsRecoveryCard
+						title="The game is over. Your result is waiting."
+						description="If you joined this challenge with a private username, enter it here to reconnect this device to your picks and unlock your personalized final result."
+						username={recoveryUsername}
+						onUsernameChange={setRecoveryUsername}
+						onSubmit={handleRecoverParticipant}
+						isSubmitting={isRecovering}
+						showLeaderboardAction={
+							<Button variant="outline" asChild className="sm:flex-1">
+								<Link
+									to="/c/$challengeId/leaderboard"
+									params={{ challengeId }}
+									className="no-underline"
+								>
+									View public leaderboard
+								</Link>
+							</Button>
+						}
+					/>
+					<PodiumSection
+						podium={leaderboard.podium}
+						currentPlayerUuid={uuid}
+						winnersAnnounced={leaderboard.winnersAnnounced}
+						title="Final podium"
+					/>
+				</PageShell>
+			);
+		}
+
 		return (
 			<FullScreenState
 				title="This challenge has ended"
@@ -198,8 +295,13 @@ function PlayerChallengeRoute() {
 		event.preventDefault();
 
 		const trimmedNickname = nickname.trim();
+		const trimmedUsername = username.trim();
 		if (trimmedNickname.length < 2 || trimmedNickname.length > 20) {
 			showToast("Nickname must be between 2 and 20 characters.", "error");
+			return;
+		}
+		if (trimmedUsername && trimmedUsername.toLowerCase() === trimmedNickname.toLowerCase()) {
+			showToast("Username and nickname must be different.", "error");
 			return;
 		}
 
@@ -217,6 +319,7 @@ function PlayerChallengeRoute() {
 				challengeId,
 				uuid,
 				nickname: trimmedNickname,
+				username: trimmedUsername || undefined,
 			});
 			setStoredParticipantId(challengeId, nextParticipantId.toString());
 			setStoredParticipantIdState(nextParticipantId.toString());
@@ -225,6 +328,34 @@ function PlayerChallengeRoute() {
 			showToast(getErrorMessage(error), "error");
 		} finally {
 			setIsJoining(false);
+		}
+	}
+
+	async function handleRecoverParticipant() {
+		const trimmedUsername = recoveryUsername.trim();
+		if (!trimmedUsername) {
+			showToast("Enter the username you saved for this challenge.", "error");
+			return;
+		}
+		if (!uuid) {
+			showToast("Couldn't initialize this device. Refresh and try again.", "error");
+			return;
+		}
+
+		setIsRecovering(true);
+		try {
+			const result = await recoverParticipantByUsername({
+				challengeId,
+				uuid,
+				username: trimmedUsername,
+			});
+			setStoredParticipantId(challengeId, result.participantId.toString());
+			setStoredParticipantIdState(result.participantId.toString());
+			showToast(`Welcome back, ${result.nickname}.`, "success");
+		} catch (error) {
+			showToast(getErrorMessage(error), "error");
+		} finally {
+			setIsRecovering(false);
 		}
 	}
 
@@ -317,10 +448,56 @@ function PlayerChallengeRoute() {
 									spellCheck={false}
 								/>
 							</label>
+							<label className="flex flex-col gap-2">
+								<span className="text-foreground text-sm font-semibold">
+									Private username <span className="text-zinc-500">(optional)</span>
+								</span>
+								<Input
+									value={username}
+									onChange={(event) => setUsername(event.target.value)}
+									placeholder="Only for logging in from another device"
+									maxLength={20}
+									autoComplete="username"
+									autoCapitalize="none"
+									enterKeyHint="go"
+									spellCheck={false}
+								/>
+								<p className="text-sm leading-6 text-zinc-500">
+									This never appears on the leaderboard. Use it only if you want to
+									recover this same entry on another device later.
+								</p>
+							</label>
 							<Button type="submit" className="w-full" disabled={isJoining}>
 								{isJoining ? "Joining..." : "Let's go"}
 							</Button>
 						</form>
+
+						<div className="mt-8 border-t border-zinc-800 pt-6">
+							<p className="text-sm font-semibold text-white">
+								Already joined from another device?
+							</p>
+							<p className="mt-2 text-sm leading-6 text-zinc-500">
+								Use your private username to reconnect this device to your picks.
+							</p>
+							<div className="mt-4 flex flex-col gap-3 sm:flex-row">
+								<Input
+									value={recoveryUsername}
+									onChange={(event) => setRecoveryUsername(event.target.value)}
+									placeholder="Enter your private username"
+									autoComplete="username"
+									autoCapitalize="none"
+									spellCheck={false}
+								/>
+								<Button
+									type="button"
+									variant="outline"
+									onClick={handleRecoverParticipant}
+									disabled={isRecovering}
+								>
+									{isRecovering ? "Checking..." : "Recover my entry"}
+								</Button>
+							</div>
+						</div>
 					</GlassCard>
 				) : hasSubmitted ? (
 					<GlassCard className="px-5 py-6 sm:px-8">
@@ -527,7 +704,7 @@ function PlayerHeader({
 }: {
 	title: string;
 	sport: string;
-	status: "open" | "scoring";
+	status: "open" | "scoring" | "closed";
 	challengeId: string;
 }) {
 	return (

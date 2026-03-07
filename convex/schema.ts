@@ -12,6 +12,8 @@ export default defineSchema({
 			v.literal("closed"),
 		),
 		questionEditUnlocked: v.optional(v.boolean()),
+		winnersAnnouncedAt: v.optional(v.number()),
+		winnerParticipantIds: v.optional(v.array(v.id("participants"))),
 		adminSecret: v.string(),
 		createdAt: v.number(),
 	}),
@@ -27,10 +29,22 @@ export default defineSchema({
 		challengeId: v.id("challenges"),
 		uuid: v.string(),
 		nickname: v.string(),
+		username: v.optional(v.string()),
+		usernameLower: v.optional(v.string()),
 		joinedAt: v.number(),
+		submittedAt: v.optional(v.number()),
 	})
 		.index("by_challenge", ["challengeId"])
-		.index("by_challenge_uuid", ["challengeId", "uuid"]),
+		.index("by_challenge_uuid", ["challengeId", "uuid"])
+		.index("by_challenge_username", ["challengeId", "usernameLower"]),
+	participantDevices: defineTable({
+		challengeId: v.id("challenges"),
+		participantId: v.id("participants"),
+		uuid: v.string(),
+		linkedAt: v.number(),
+	})
+		.index("by_challenge_uuid", ["challengeId", "uuid"])
+		.index("by_participant", ["participantId"]),
 	predictions: defineTable({
 		participantId: v.id("participants"),
 		questionId: v.id("questions"),
@@ -41,4 +55,17 @@ export default defineSchema({
 		.index("by_participant", ["participantId"])
 		.index("by_challenge", ["challengeId"])
 		.index("by_participant_question", ["participantId", "questionId"]),
+	winnerMessages: defineTable({
+		medal: v.union(
+			v.literal("gold"),
+			v.literal("silver"),
+			v.literal("bronze"),
+		),
+		sportKey: v.optional(v.string()),
+		order: v.number(),
+		title: v.string(),
+		body: v.string(),
+	})
+		.index("by_medal", ["medal"])
+		.index("by_medal_sportKey", ["medal", "sportKey"]),
 });

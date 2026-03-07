@@ -130,6 +130,33 @@
 		border: 2px solid var(--color-border);
 		background: var(--color-card);
 	}
+
+	.winner-hero::before,
+	.winner-hero::after {
+		content: "";
+		position: absolute;
+		pointer-events: none;
+		border-radius: 9999px;
+		filter: blur(40px);
+	}
+
+	.winner-hero::before {
+		top: -3rem;
+		right: -3rem;
+		width: 12rem;
+		height: 12rem;
+		background: rgba(255, 255, 255, 0.16);
+		animation: sweep-glow 9s ease-in-out infinite alternate;
+	}
+
+	.winner-hero::after {
+		bottom: -4rem;
+		left: -2rem;
+		width: 10rem;
+		height: 10rem;
+		background: rgba(255, 255, 255, 0.1);
+		animation: sweep-glow 11s ease-in-out infinite alternate-reverse;
+	}
 }
 
 @keyframes rise-in {
@@ -149,6 +176,20 @@
 	}
 	to {
 		opacity: 1;
+	}
+}
+
+@keyframes sweep-glow {
+	0% {
+		transform: translateX(-20%) translateY(0) rotate(0deg);
+		opacity: 0.2;
+	}
+	50% {
+		opacity: 0.45;
+	}
+	100% {
+		transform: translateX(20%) translateY(-2%) rotate(6deg);
+		opacity: 0.2;
 	}
 }
 
