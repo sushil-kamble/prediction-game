@@ -1,0 +1,23 @@
+{
+  "projectName": "prediction-game",
+  "mode": "file-router",
+  "typescript": true,
+  "packageManager": "pnpm",
+  "includeExamples": false,
+  "tailwind": true,
+  "addOnOptions": {},
+  "envVarValues": {
+    "CONVEX_DEPLOYMENT": "giddy-salmon-79",
+    "VITE_CONVEX_URL": "https://giddy-salmon-79.convex.cloud"
+  },
+  "git": true,
+  "routerOnly": false,
+  "version": 1,
+  "framework": "react",
+  "chosenAddOns": [
+    "biome",
+    "cloudflare",
+    "convex",
+    "shadcn"
+  ]
+}
