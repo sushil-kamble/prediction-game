@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
@@ -20,7 +20,6 @@ import {
 } from "#/components/app/ui";
 import { useToast } from "#/components/app/use-toast";
 import { api } from "#/lib/api";
-import { buildLeaderboardUrl } from "#/lib/challenge";
 import { fetchChallengePreview } from "#/lib/convex-server";
 import { useClientUUID } from "#/lib/use-client-uuid";
 import {
@@ -95,6 +94,7 @@ function PlayerChallengeRoute() {
 	const [isJoining, setIsJoining] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+	const hasInteracted = useRef(false);
 
 	useEffect(() => {
 		setStoredParticipantIdState(getStoredParticipantId(challengeId));
@@ -141,10 +141,6 @@ function PlayerChallengeRoute() {
 	const answeredCount = Object.keys(selections).length;
 	const isReadyToSubmit =
 		orderedQuestions.length > 0 && answeredCount === orderedQuestions.length;
-	const leaderboardHref =
-		typeof window !== "undefined"
-			? buildLeaderboardUrl(window.location.origin, challengeId)
-			: `/c/${challengeId}/leaderboard`;
 
 	if (
 		challenge === undefined ||
@@ -233,12 +229,28 @@ function PlayerChallengeRoute() {
 	}
 
 	function updateSelection(questionId: string, optionIndex: number) {
+		hasInteracted.current = true;
 		setSelections((current) => {
 			const nextSelections = {
 				...current,
 				[questionId]: optionIndex,
 			};
 			setStoredPredictionDraft(challengeId, nextSelections);
+
+			// Auto-scroll to next unanswered question after a brief pause
+			const nextUnanswered = orderedQuestions.find(
+				(q) => nextSelections[q._id.toString()] === undefined
+			);
+			if (nextUnanswered) {
+				requestAnimationFrame(() => {
+					setTimeout(() => {
+						document
+							.getElementById(`question-${nextUnanswered._id}`)
+							?.scrollIntoView({ behavior: "smooth", block: "center" });
+					}, 250);
+				});
+			}
+
 			return nextSelections;
 		});
 	}
@@ -299,6 +311,10 @@ function PlayerChallengeRoute() {
 									onChange={(event) => setNickname(event.target.value)}
 									placeholder="Pick a name everyone will recognise"
 									maxLength={20}
+									autoComplete="nickname"
+									autoCapitalize="words"
+									enterKeyHint="go"
+									spellCheck={false}
 								/>
 							</label>
 							<Button type="submit" className="w-full" disabled={isJoining}>
@@ -328,18 +344,21 @@ function PlayerChallengeRoute() {
 						</Button>
 
 						<div className="mt-6 mb-20 grid gap-4">
-							{orderedQuestions.map((question) => (
+							{orderedQuestions.map((question, questionIndex) => (
 								<div
 									key={question._id}
 									className="border-border bg-secondary/30 rounded-xl border p-4"
 								>
 									<div className="flex items-start justify-between gap-3">
-										<div>
+										<div className="flex items-start gap-3">
+											<span className="text-muted-foreground mt-0.5 text-xs font-bold tracking-widest">
+												Q{questionIndex + 1}
+											</span>
 											<h2 className="text-foreground text-lg leading-7 font-semibold">
 												{question.text}
 											</h2>
 										</div>
-										<Lock className="text-primary/60 h-4 w-4" />
+										<Lock className="text-primary/60 mt-0.5 h-4 w-4 shrink-0" />
 									</div>
 									<div className="mt-4 grid gap-3">
 										{question.options.map((option, optionIndex) => (
@@ -371,58 +390,87 @@ function PlayerChallengeRoute() {
 							every question, then submit all picks at once.
 						</InlineNotice>
 
-						<div className="mb-20 grid gap-4">
-							{orderedQuestions.map((question) => (
-								<div
-									key={question._id}
-									className="border-border bg-secondary/30 rounded-xl border p-4"
-								>
-									<div className="flex items-start justify-between gap-3">
-										<div>
-											<h2 className="text-foreground text-lg leading-7 font-semibold">
-												{question.text}
-											</h2>
+						<div className="mb-28 grid gap-4">
+							{orderedQuestions.map((question, questionIndex) => {
+								const isAnswered =
+									selections[question._id.toString()] !== undefined;
+								return (
+									<div
+										key={question._id}
+										id={`question-${question._id}`}
+										className="border-border bg-secondary/30 scroll-mt-36 rounded-xl border p-4"
+									>
+										<div className="flex items-start justify-between gap-3">
+											<div className="flex items-start gap-3">
+												<span className="text-muted-foreground mt-0.5 text-xs font-bold tracking-widest">
+													Q{questionIndex + 1}
+												</span>
+												<h2 className="text-foreground text-lg leading-7 font-semibold">
+													{question.text}
+												</h2>
+											</div>
+											{isAnswered ? (
+												<span className="bg-primary mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center">
+													<Check className="h-3.5 w-3.5 text-black" />
+												</span>
+											) : null}
+										</div>
+										<div className="mt-4 grid gap-3">
+											{question.options.map((option, optionIndex) => (
+												<OptionButton
+													key={option}
+													onClick={() =>
+														updateSelection(
+															question._id.toString(),
+															optionIndex
+														)
+													}
+													selected={
+														selections[question._id.toString()] === optionIndex
+													}
+												>
+													{option}
+												</OptionButton>
+											))}
 										</div>
 									</div>
-									<div className="mt-4 grid gap-3">
-										{question.options.map((option, optionIndex) => (
-											<OptionButton
-												key={option}
-												onClick={() =>
-													updateSelection(question._id.toString(), optionIndex)
-												}
-												selected={
-													selections[question._id.toString()] === optionIndex
-												}
-											>
-												{option}
-											</OptionButton>
-										))}
-									</div>
-								</div>
-							))}
+								);
+							})}
 						</div>
 					</>
 				)}
 			</PageShell>
 
 			{participant && !hasSubmitted ? (
-				<div className="fixed inset-x-0 bottom-0 z-40 px-4 pb-4">
-					<div className="border-border bg-card/95 mx-auto flex max-w-5xl items-center gap-3 rounded-xl border px-4 py-4 shadow-[0_20px_60px_rgba(0,0,0,0.4)] backdrop-blur-xl">
-						<div className="flex-1">
-							<p className="text-muted-foreground m-0 text-xs font-bold tracking-[0.22em] uppercase">
-								Progress
-							</p>
-							<p className="text-foreground mt-1 text-sm font-semibold">
-								{answeredCount} of {orderedQuestions.length} answered
-							</p>
+				<div
+					className="fixed inset-x-0 bottom-0 z-40 px-4"
+					style={{
+						paddingBottom: "max(1rem, env(safe-area-inset-bottom, 0px))",
+					}}
+				>
+					<div className="border-border bg-card/95 mx-auto max-w-5xl overflow-hidden rounded-xl border shadow-[0_20px_60px_rgba(0,0,0,0.4)] backdrop-blur-xl">
+						{/* Visual progress bar */}
+						<div className="h-1 w-full bg-zinc-800/60">
+							<div
+								className="bg-primary h-full transition-all duration-500 ease-out"
+								style={{
+									width: `${orderedQuestions.length > 0 ? (answeredCount / orderedQuestions.length) * 100 : 0}%`,
+								}}
+							/>
 						</div>
-						<Button
-							onClick={() => setIsConfirmOpen(true)}
-							disabled={!isReadyToSubmit}
-						>
-							Submit all
-						</Button>
+						<div className="flex items-center gap-3 px-4 py-3">
+							<div className="flex-1">
+								<p className="text-foreground m-0 text-sm font-semibold">
+									{answeredCount}/{orderedQuestions.length} picked
+								</p>
+							</div>
+							<Button
+								onClick={() => setIsConfirmOpen(true)}
+								disabled={!isReadyToSubmit}
+							>
+								Submit all
+							</Button>
+						</div>
 					</div>
 				</div>
 			) : null}
@@ -451,11 +499,21 @@ function PlayerChallengeRoute() {
 					</>
 				}
 			>
-				<InlineNotice tone="warning">
-					Leaderboard link:
-					<br />
-					<a href={leaderboardHref}>{leaderboardHref}</a>
-				</InlineNotice>
+				<div className="border-border bg-secondary/40 grid gap-3 border px-4 py-3">
+					<p className="text-muted-foreground m-0 text-xs font-bold tracking-[0.2em] uppercase">
+						Challenge
+					</p>
+					<p className="text-foreground m-0 text-base font-semibold">
+						{challenge.title}
+					</p>
+					<div className="text-muted-foreground flex flex-wrap items-center gap-3 text-xs font-semibold">
+						<span>{challenge.sport}</span>
+						<span>•</span>
+						<span>
+							{answeredCount}/{orderedQuestions.length} answered
+						</span>
+					</div>
+				</div>
 			</BottomSheet>
 		</>
 	);
@@ -473,7 +531,13 @@ function PlayerHeader({
 	challengeId: string;
 }) {
 	return (
-		<div className="sticky top-0 z-20 -mx-4 mb-2 border-b-2 border-zinc-800 bg-black px-4 pt-4 pb-4 sm:pt-6">
+		<div
+			className="sticky top-0 z-20 -mx-4 mb-2 border-b-2 border-zinc-800 bg-black px-4 pb-4"
+			style={{
+				paddingTop: "max(1rem, env(safe-area-inset-top, 0px))",
+			}}
+		>
+			{" "}
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div>
 					<SectionEyebrow className="mb-2">PredictGame</SectionEyebrow>

@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ChevronRight, X } from "lucide-react";
@@ -138,9 +139,12 @@ export function OptionButton({
 }) {
 	return (
 		<button
+			data-slot="option-button"
+			data-selected={selected || undefined}
+			data-locked={locked || undefined}
 			{...props}
 			className={cn(
-				"flex min-h-[4rem] w-full items-center justify-between border-2 px-5 py-4 text-left text-base font-bold tracking-wider normal-case transition-all",
+				"flex min-h-[3.5rem] w-full items-center justify-between border-2 px-5 py-3 text-left text-base font-bold tracking-wider normal-case transition-all",
 				selected &&
 					"border-primary bg-primary -translate-x-1 -translate-y-1 text-black shadow-[4px_4px_0px_0px_#ffffff]",
 				!selected &&
@@ -155,7 +159,7 @@ export function OptionButton({
 			<span>{children}</span>
 			<ChevronRight
 				className={cn(
-					"h-5 w-5",
+					"h-5 w-5 shrink-0",
 					selected || correct ? "text-black" : "text-zinc-500"
 				)}
 			/>
@@ -207,7 +211,7 @@ export function FullScreenState({
 				<h1 className="font-display mb-6 text-4xl leading-none text-white uppercase sm:text-5xl">
 					{title}
 				</h1>
-				<p className="text-lg leading-relaxed font-medium text-zinc-400 [overflow-wrap:anywhere]">
+				<p className="text-lg leading-relaxed font-medium [overflow-wrap:anywhere] text-zinc-400">
 					{description}
 				</p>
 				{children ? <div className="mt-8 min-w-0">{children}</div> : null}
@@ -242,19 +246,86 @@ export function BottomSheet({
 	children?: ReactNode;
 	footer?: ReactNode;
 }) {
+	const sheetRef = useRef<HTMLDivElement>(null);
+	const dragStartY = useRef(0);
+	const currentTranslateY = useRef(0);
+	const isDragging = useRef(false);
+
+	/* ── Body scroll lock ── */
+	useEffect(() => {
+		if (!open || typeof document === "undefined") return;
+
+		const scrollY = window.scrollY;
+		document.body.classList.add("scroll-locked");
+		document.body.style.top = `-${scrollY}px`;
+
+		return () => {
+			document.body.classList.remove("scroll-locked");
+			document.body.style.top = "";
+			window.scrollTo(0, scrollY);
+		};
+	}, [open]);
+
+	/* ── Swipe-to-dismiss handlers ── */
+	const handleTouchStart = useCallback((e: React.TouchEvent) => {
+		dragStartY.current = e.touches[0].clientY;
+		isDragging.current = false;
+	}, []);
+
+	const handleTouchMove = useCallback((e: React.TouchEvent) => {
+		const delta = e.touches[0].clientY - dragStartY.current;
+		if (delta > 0) {
+			isDragging.current = true;
+			currentTranslateY.current = delta;
+			if (sheetRef.current) {
+				sheetRef.current.style.transform = `translateY(${delta}px)`;
+				sheetRef.current.style.transition = "none";
+			}
+		}
+	}, []);
+
+	const handleTouchEnd = useCallback(() => {
+		if (currentTranslateY.current > 80) {
+			onClose();
+		} else if (sheetRef.current) {
+			sheetRef.current.style.transform = "";
+			sheetRef.current.style.transition = "";
+		}
+		currentTranslateY.current = 0;
+		isDragging.current = false;
+	}, [onClose]);
+
 	if (!open || typeof document === "undefined") {
 		return null;
 	}
 
 	return createPortal(
-		<div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/80 p-0 backdrop-blur-md">
+		<div className="fixed inset-0 z-[100] flex animate-[fade-in_200ms_ease-out] items-end justify-center p-0">
+			{/* Backdrop */}
+			<div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
 			<button
 				type="button"
 				onClick={onClose}
 				className="absolute inset-0 cursor-default"
 				aria-label="Close dialog"
 			/>
-			<div className="relative max-h-[90vh] w-full max-w-2xl animate-[rise-in_200ms_ease-out] overflow-y-auto border-t-4 border-r-4 border-l-4 border-white bg-black px-6 py-8">
+			{/* Sheet */}
+			<div
+				ref={sheetRef}
+				className="relative max-h-[90vh] w-full max-w-2xl animate-[slide-up_250ms_cubic-bezier(0.16,1,0.3,1)] overflow-y-auto border-t-4 border-r-4 border-l-4 border-white bg-black px-6 py-6"
+				style={{
+					paddingBottom:
+						"max(2rem, calc(1.5rem + env(safe-area-inset-bottom, 0px)))",
+				}}
+				onTouchStart={handleTouchStart}
+				onTouchMove={handleTouchMove}
+				onTouchEnd={handleTouchEnd}
+			>
+				{/* Drag handle */}
+				<div className="mb-5 flex justify-center">
+					<div className="h-1.5 w-12 rounded-full bg-zinc-600" />
+				</div>
+
 				<div className="mb-8 flex items-start gap-4">
 					<div className="flex-1">
 						<h2 className="font-display mb-4 text-4xl leading-none text-white uppercase">

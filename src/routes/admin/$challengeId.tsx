@@ -167,6 +167,10 @@ function AdminChallengeRoute() {
 			showToast("Admin access is only available on the device that created this challenge.", "error");
 			return;
 		}
+		if (challenge?.status === "closed") {
+			showToast("Challenge is closed. Questions cannot be edited.", "error");
+			return;
+		}
 		if (!isQuestionEditUnlocked) {
 			showToast("Questions are frozen. Unpublish to edit questions.", "error");
 			return;
@@ -443,8 +447,9 @@ function AdminChallengeRoute() {
 
 							{!isQuestionEditUnlocked ? (
 								<InlineNotice tone="warning" className="mt-5">
-									Questions are frozen. Click unpublish in the publish section to unlock
-									editing.
+									{challenge.status === "closed"
+										? "Challenge is closed. Question editing is permanently locked."
+										: "Questions are frozen. Click unpublish in the publish section to unlock editing."}
 								</InlineNotice>
 							) : null}
 

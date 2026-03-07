@@ -22,7 +22,8 @@ export const Route = createRootRoute({
 			},
 			{
 				name: "viewport",
-				content: "width=device-width, initial-scale=1",
+				content:
+					"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover",
 			},
 			{
 				title: "PredictGame",
@@ -32,6 +33,13 @@ export const Route = createRootRoute({
 				content:
 					"Create sports prediction challenges, share one link, and watch the leaderboard update live.",
 			},
+			{ name: "theme-color", content: "#000000" },
+			{ name: "apple-mobile-web-app-capable", content: "yes" },
+			{
+				name: "apple-mobile-web-app-status-bar-style",
+				content: "black-translucent",
+			},
+			{ name: "format-detection", content: "telephone=no" },
 		],
 		links: [
 			{
@@ -59,7 +67,7 @@ function RootDocument({ children }: { children: ReactNode }) {
 			<head>
 				<HeadContent />
 			</head>
-			<body className="font-sans antialiased selection:bg-primary/30 selection:text-primary-foreground">
+			<body className="selection:bg-primary/30 selection:text-primary-foreground font-sans antialiased">
 				<ConvexProvider>
 					<ToastProvider>
 						<ReconnectingBanner />
@@ -90,6 +98,15 @@ function RootErrorBoundary({
 	error: Error;
 	reset: () => void;
 }) {
+	function handleTryAgain() {
+		if (typeof window !== "undefined") {
+			window.location.reload();
+			return;
+		}
+
+		reset();
+	}
+
 	return (
 		<RootDocument>
 			<FullScreenState
@@ -97,9 +114,11 @@ function RootErrorBoundary({
 				description={error.message || "The app hit an unexpected issue."}
 			>
 				<div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-					<Button onClick={() => reset()}>Try again</Button>
+					<Button onClick={handleTryAgain}>Try again</Button>
 					<Button variant="outline" asChild>
-						<Link to="/" className="no-underline">Back home</Link>
+						<Link to="/" className="no-underline">
+							Back home
+						</Link>
 					</Button>
 				</div>
 			</FullScreenState>
@@ -114,7 +133,9 @@ function RootNotFound() {
 			description="The page you're looking for doesn't exist in this version."
 		>
 			<Button asChild>
-				<Link to="/" className="no-underline">Go home</Link>
+				<Link to="/" className="no-underline">
+					Go home
+				</Link>
 			</Button>
 		</FullScreenState>
 	);

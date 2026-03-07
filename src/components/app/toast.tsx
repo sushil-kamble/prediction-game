@@ -1,16 +1,8 @@
-import {
-	useCallback,
-	useEffect,
-	useMemo,
-	useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import {
-	ToastContext,
-	type ToastTone,
-} from "#/components/app/toast-context";
+import { ToastContext, type ToastTone } from "#/components/app/toast-context";
 import { cn } from "#/lib/utils";
 
 type Toast = {
@@ -28,12 +20,15 @@ const toneClasses: Record<ToastTone, string> = {
 export function ToastProvider({ children }: { children: ReactNode }) {
 	const [toasts, setToasts] = useState<Toast[]>([]);
 
-	const showToast = useCallback((message: string, tone: ToastTone = "neutral") => {
-		setToasts((current) => [
-			...current,
-			{ id: Date.now() + Math.random(), message, tone },
-		]);
-	}, []);
+	const showToast = useCallback(
+		(message: string, tone: ToastTone = "neutral") => {
+			setToasts((current) => [
+				...current,
+				{ id: Date.now() + Math.random(), message, tone },
+			]);
+		},
+		[]
+	);
 
 	const removeToast = useCallback((id: number) => {
 		setToasts((current) => current.filter((toast) => toast.id !== id));
@@ -61,12 +56,18 @@ function ToastViewport({
 	}
 
 	return createPortal(
-		<div className="pointer-events-none fixed inset-x-0 bottom-4 z-[90] flex flex-col gap-3 px-4">
+		<div
+			className="pointer-events-none fixed inset-x-0 z-[90] flex flex-col gap-3 px-4"
+			style={{
+				bottom: "max(5rem, calc(4.5rem + env(safe-area-inset-bottom, 0px)))",
+			}}
+		>
+			{" "}
 			{toasts.map((toast) => (
 				<ToastItem key={toast.id} toast={toast} onRemove={onRemove} />
 			))}
 		</div>,
-		document.body,
+		document.body
 	);
 }
 
@@ -88,16 +89,18 @@ function ToastItem({
 	return (
 		<div
 			className={cn(
-				"pointer-events-auto mx-auto flex w-full max-w-[28rem] items-start gap-3 rounded-xl border px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.4)] backdrop-blur-xl animate-[rise-in_240ms_ease-out]",
-				toneClasses[toast.tone],
+				"pointer-events-auto mx-auto flex w-full max-w-[28rem] animate-[rise-in_240ms_ease-out] items-start gap-3 rounded-xl border px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.4)] backdrop-blur-xl",
+				toneClasses[toast.tone]
 			)}
 			role="status"
 		>
-			<p className="m-0 flex-1 text-sm font-semibold leading-6">{toast.message}</p>
+			<p className="m-0 flex-1 text-sm leading-6 font-semibold">
+				{toast.message}
+			</p>
 			<button
 				type="button"
 				onClick={() => onRemove(toast.id)}
-				className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-muted-foreground hover:text-foreground"
+				className="border-border bg-secondary text-muted-foreground hover:text-foreground inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border"
 				aria-label="Dismiss message"
 			>
 				<X className="h-3.5 w-3.5" />

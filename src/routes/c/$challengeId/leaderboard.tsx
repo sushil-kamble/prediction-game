@@ -200,9 +200,6 @@ function LeaderboardRoute() {
 											<p className="text-foreground truncate text-base font-semibold">
 												{row.nickname}
 											</p>
-											<p className="text-muted-foreground mt-1 text-xs font-bold tracking-[0.22em] uppercase">
-												{row.correctCount}/{leaderboard.questionCount} correct
-											</p>
 										</div>
 										<div className="text-right">
 											<p className="font-display text-foreground text-3xl leading-none">
