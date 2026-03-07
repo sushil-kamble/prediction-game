@@ -9,55 +9,94 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminChallengeIdRouteImport } from './routes/admin/$challengeId'
+import { Route as CChallengeIdIndexRouteImport } from './routes/c/$challengeId/index'
+import { Route as CChallengeIdLeaderboardRouteImport } from './routes/c/$challengeId/leaderboard'
 
-const AboutRoute = AboutRouteImport.update({
-  id: '/about',
-  path: '/about',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminChallengeIdRoute = AdminChallengeIdRouteImport.update({
+  id: '/admin/$challengeId',
+  path: '/admin/$challengeId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CChallengeIdIndexRoute = CChallengeIdIndexRouteImport.update({
+  id: '/c/$challengeId/',
+  path: '/c/$challengeId/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CChallengeIdLeaderboardRoute = CChallengeIdLeaderboardRouteImport.update({
+  id: '/c/$challengeId/leaderboard',
+  path: '/c/$challengeId/leaderboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/about': typeof AboutRoute
+  '/admin/$challengeId': typeof AdminChallengeIdRoute
+  '/admin/': typeof AdminIndexRoute
+  '/c/$challengeId/leaderboard': typeof CChallengeIdLeaderboardRoute
+  '/c/$challengeId/': typeof CChallengeIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/about': typeof AboutRoute
+  '/admin/$challengeId': typeof AdminChallengeIdRoute
+  '/admin': typeof AdminIndexRoute
+  '/c/$challengeId/leaderboard': typeof CChallengeIdLeaderboardRoute
+  '/c/$challengeId': typeof CChallengeIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/about': typeof AboutRoute
+  '/admin/$challengeId': typeof AdminChallengeIdRoute
+  '/admin/': typeof AdminIndexRoute
+  '/c/$challengeId/leaderboard': typeof CChallengeIdLeaderboardRoute
+  '/c/$challengeId/': typeof CChallengeIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about'
+  fullPaths:
+    | '/'
+    | '/admin/$challengeId'
+    | '/admin/'
+    | '/c/$challengeId/leaderboard'
+    | '/c/$challengeId/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about'
-  id: '__root__' | '/' | '/about'
+  to:
+    | '/'
+    | '/admin/$challengeId'
+    | '/admin'
+    | '/c/$challengeId/leaderboard'
+    | '/c/$challengeId'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin/$challengeId'
+    | '/admin/'
+    | '/c/$challengeId/leaderboard'
+    | '/c/$challengeId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AboutRoute: typeof AboutRoute
+  AdminChallengeIdRoute: typeof AdminChallengeIdRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+  CChallengeIdLeaderboardRoute: typeof CChallengeIdLeaderboardRoute
+  CChallengeIdIndexRoute: typeof CChallengeIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -65,12 +104,43 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/$challengeId': {
+      id: '/admin/$challengeId'
+      path: '/admin/$challengeId'
+      fullPath: '/admin/$challengeId'
+      preLoaderRoute: typeof AdminChallengeIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/c/$challengeId/': {
+      id: '/c/$challengeId/'
+      path: '/c/$challengeId'
+      fullPath: '/c/$challengeId/'
+      preLoaderRoute: typeof CChallengeIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/c/$challengeId/leaderboard': {
+      id: '/c/$challengeId/leaderboard'
+      path: '/c/$challengeId/leaderboard'
+      fullPath: '/c/$challengeId/leaderboard'
+      preLoaderRoute: typeof CChallengeIdLeaderboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AboutRoute: AboutRoute,
+  AdminChallengeIdRoute: AdminChallengeIdRoute,
+  AdminIndexRoute: AdminIndexRoute,
+  CChallengeIdLeaderboardRoute: CChallengeIdLeaderboardRoute,
+  CChallengeIdIndexRoute: CChallengeIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

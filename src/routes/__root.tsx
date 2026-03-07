@@ -1,14 +1,18 @@
-import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
+import type { ReactNode } from "react";
+import {
+	HeadContent,
+	Link,
+	Outlet,
+	Scripts,
+	createRootRoute,
+} from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
-import Footer from "../components/Footer";
-import Header from "../components/Header";
-
-import ConvexProvider from "../integrations/convex/provider";
-
+import { ReconnectingBanner } from "#/components/app/reconnecting-banner";
+import { ToastProvider } from "#/components/app/toast";
+import { Button, FullScreenState } from "#/components/app/ui";
+import ConvexProvider from "#/integrations/convex/provider";
 import appCss from "../styles.css?url";
-
-const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getItem('theme');var mode=(stored==='light'||stored==='dark'||stored==='auto')?stored:'auto';var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var resolved=mode==='auto'?(prefersDark?'dark':'light'):mode;var root=document.documentElement;root.classList.remove('light','dark');root.classList.add(resolved);if(mode==='auto'){root.removeAttribute('data-theme')}else{root.setAttribute('data-theme',mode)}root.style.colorScheme=resolved;}catch(e){}})();`;
 
 export const Route = createRootRoute({
 	head: () => ({
@@ -21,7 +25,12 @@ export const Route = createRootRoute({
 				content: "width=device-width, initial-scale=1",
 			},
 			{
-				title: "TanStack Start Starter",
+				title: "PredictGame",
+			},
+			{
+				name: "description",
+				content:
+					"Create sports prediction challenges, share one link, and watch the leaderboard update live.",
 			},
 		],
 		links: [
@@ -31,35 +40,88 @@ export const Route = createRootRoute({
 			},
 		],
 	}),
-	shellComponent: RootDocument,
+	errorComponent: RootErrorBoundary,
+	notFoundComponent: RootNotFound,
+	component: RootComponent,
 });
 
-function RootDocument({ children }: { children: React.ReactNode }) {
+function RootComponent() {
 	return (
-		<html lang="en" suppressHydrationWarning>
+		<RootDocument>
+			<Outlet />
+		</RootDocument>
+	);
+}
+
+function RootDocument({ children }: { children: ReactNode }) {
+	return (
+		<html lang="en">
 			<head>
-				<script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
 				<HeadContent />
 			</head>
-			<body className="font-sans [overflow-wrap:anywhere] antialiased selection:bg-[rgba(79,184,178,0.24)]">
+			<body className="font-sans antialiased selection:bg-[rgba(243,145,53,0.24)]">
 				<ConvexProvider>
-					<Header />
-					{children}
-					<Footer />
-					<TanStackDevtools
-						config={{
-							position: "bottom-right",
-						}}
-						plugins={[
-							{
-								name: "Tanstack Router",
-								render: <TanStackRouterDevtoolsPanel />,
-							},
-						]}
-					/>
+					<ToastProvider>
+						<ReconnectingBanner />
+						{children}
+						<TanStackDevtools
+							config={{
+								position: "bottom-right",
+							}}
+							plugins={[
+								{
+									name: "TanStack Router",
+									render: <TanStackRouterDevtoolsPanel />,
+								},
+							]}
+						/>
+					</ToastProvider>
 				</ConvexProvider>
 				<Scripts />
 			</body>
 		</html>
+	);
+}
+
+function RootErrorBoundary({
+	error,
+	reset,
+}: {
+	error: Error;
+	reset: () => void;
+}) {
+	return (
+		<RootDocument>
+			<FullScreenState
+				title="Something went wrong"
+				description={error.message || "The app hit an unexpected issue."}
+			>
+				<div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+					<Button onClick={() => reset()}>Try again</Button>
+					<Link
+						to="/"
+						className="inline-flex min-h-12 items-center justify-center rounded-full border border-[color:var(--card-stroke)] bg-white/84 px-5 text-sm font-semibold text-[var(--ink)] no-underline"
+					>
+						Back home
+					</Link>
+				</div>
+			</FullScreenState>
+		</RootDocument>
+	);
+}
+
+function RootNotFound() {
+	return (
+		<FullScreenState
+			title="Route not found"
+			description="The page you're looking for doesn't exist in this version."
+		>
+			<Link
+				to="/"
+				className="inline-flex min-h-12 items-center justify-center rounded-full border border-transparent bg-[linear-gradient(135deg,var(--orange-500),var(--orange-700))] px-5 text-sm font-semibold text-white no-underline shadow-[0_18px_42px_rgba(224,110,27,0.28)]"
+			>
+				Go home
+			</Link>
+		</FullScreenState>
 	);
 }
