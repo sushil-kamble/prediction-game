@@ -12,6 +12,8 @@ import {
 	SportBadge,
 	StatusBadge,
 } from "#/components/app/ui";
+import { Button } from "#/components/ui/button";
+import { Badge } from "#/components/ui/badge";
 import { api } from "#/lib/api";
 import { useClientUUID } from "#/lib/use-client-uuid";
 import { getStoredParticipantId } from "#/lib/storage";
@@ -93,7 +95,7 @@ function LeaderboardRoute() {
 							Live leaderboard
 						</SectionEyebrow>
 						<h1
-							className={`font-display leading-none text-[var(--ink)] transition-all ${
+							className={`font-display leading-none text-foreground transition-all ${
 								isCollapsed ? "text-2xl" : "text-3xl sm:text-4xl"
 							}`}
 						>
@@ -103,20 +105,22 @@ function LeaderboardRoute() {
 							<SportBadge sport={challenge.sport} />
 							<StatusBadge status={leaderboard.status} />
 							{leaderboard.status === "scoring" ? (
-								<span className="inline-flex items-center gap-2 rounded-full bg-[rgba(255,242,229,0.94)] px-3 py-1.5 text-xs font-extrabold uppercase tracking-[0.18em] text-[var(--orange-700)]">
-									<Activity className="h-3.5 w-3.5" />
+								<Badge variant="outline" className="gap-1.5 border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider text-emerald-400">
+									<Activity className="h-3 w-3" />
 									Live
-								</span>
+								</Badge>
 							) : null}
 						</div>
 					</div>
-					<Link
-						to="/c/$challengeId"
-						params={{ challengeId }}
-						className="inline-flex min-h-12 items-center justify-center rounded-full border border-[color:var(--card-stroke)] bg-white/84 px-5 text-sm font-semibold text-[var(--ink)] no-underline"
-					>
-						Back to picks
-					</Link>
+					<Button variant="outline" asChild>
+						<Link
+							to="/c/$challengeId"
+							params={{ challengeId }}
+							className="no-underline"
+						>
+							Back to picks
+						</Link>
+					</Button>
 				</div>
 			</GlassCard>
 
@@ -125,24 +129,26 @@ function LeaderboardRoute() {
 					You haven't predicted yet. The leaderboard is still visible, and you can
 					jump back to lock in your picks.
 					<div className="mt-4">
-						<Link
-							to="/c/$challengeId"
-							params={{ challengeId }}
-							className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[color:var(--card-stroke)] bg-white/84 px-4 text-sm font-semibold text-[var(--ink)] no-underline"
-						>
-							Make predictions
-							<ArrowRight className="h-4 w-4" />
-						</Link>
+						<Button variant="outline" size="sm" asChild>
+							<Link
+								to="/c/$challengeId"
+								params={{ challengeId }}
+								className="no-underline"
+							>
+								Make predictions
+								<ArrowRight className="h-4 w-4" />
+							</Link>
+						</Button>
 					</div>
 				</InlineNotice>
 			) : null}
 
 			{leaderboard.rows.length === 0 ? (
 				<GlassCard className="px-5 py-8 text-center">
-					<h2 className="font-display text-3xl text-[var(--ink)]">
+					<h2 className="font-display text-3xl text-foreground">
 						No players yet
 					</h2>
-					<p className="mt-3 text-sm leading-7 text-[var(--ink-soft)]">
+					<p className="mt-3 text-sm leading-7 text-muted-foreground">
 						Once players join, their rows will appear here in real time.
 					</p>
 				</GlassCard>
@@ -151,48 +157,53 @@ function LeaderboardRoute() {
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 						<div>
 							<SectionEyebrow>Scoreboard</SectionEyebrow>
-							<h2 className="font-display text-3xl text-[var(--ink)]">
+							<h2 className="font-display text-3xl text-foreground">
 								Current ranking
 							</h2>
 						</div>
 						{leaderboard.answeredQuestionCount === 0 ? (
-							<div className="inline-flex items-center gap-2 rounded-full border border-[rgba(255,188,96,0.58)] bg-[rgba(255,246,233,0.94)] px-4 py-2 text-sm font-semibold text-[var(--warning-ink)]">
-								<span className="h-2.5 w-2.5 rounded-full bg-[var(--warning)] animate-pulse" />
+							<Badge variant="outline" className="gap-1.5 border-yellow-500/30 bg-yellow-500/10 px-3 py-1.5 text-sm font-semibold text-yellow-300">
+								<span className="h-2 w-2 rounded-full bg-yellow-400 animate-pulse" />
 								Waiting for results...
-							</div>
+							</Badge>
 						) : null}
 					</div>
 
 					<div className="mt-6 grid gap-3">
 						{leaderboard.rows.map((row) => {
 							const isCurrentPlayer = row.uuid === currentPlayerUuid;
+							const isTopThree = row.rank <= 3;
 
 							return (
 								<div
 									key={`${row.uuid}-${row.rank}`}
-									className={`rounded-[1.5rem] border px-4 py-4 shadow-[0_18px_42px_rgba(33,21,10,0.08)] transition ${
+									className={`rounded-xl border px-4 py-4 transition ${
 										isCurrentPlayer
-											? "border-[rgba(243,145,53,0.55)] bg-[rgba(255,241,228,0.94)]"
-											: "border-white/70 bg-white/74"
+											? "border-primary/40 bg-primary/8 shadow-[0_0_24px_rgba(139,92,246,0.08)]"
+											: "border-border bg-secondary/30"
 									}`}
 								>
 									<div className="flex items-center gap-4">
-										<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[rgba(255,255,255,0.82)] text-lg font-extrabold text-[var(--orange-700)]">
+										<div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-lg font-extrabold ${
+											isTopThree
+												? "bg-gradient-to-br from-violet-500/20 to-purple-700/20 text-primary"
+												: "bg-secondary text-muted-foreground"
+										}`}>
 											#{row.rank}
 										</div>
 										<div className="min-w-0 flex-1">
-											<p className="truncate text-base font-semibold text-[var(--ink)]">
+											<p className="truncate text-base font-semibold text-foreground">
 												{row.nickname}
 											</p>
-											<p className="mt-1 text-xs font-bold uppercase tracking-[0.22em] text-[var(--ink-soft)]">
+											<p className="mt-1 text-xs font-bold uppercase tracking-[0.22em] text-muted-foreground">
 												{row.correctCount}/{leaderboard.questionCount} correct
 											</p>
 										</div>
 										<div className="text-right">
-											<p className="font-display text-3xl leading-none text-[var(--ink)]">
+											<p className="font-display text-3xl leading-none text-foreground">
 												{row.score}
 											</p>
-											<p className="mt-1 text-xs font-bold uppercase tracking-[0.22em] text-[var(--ink-soft)]">
+											<p className="mt-1 text-xs font-bold uppercase tracking-[0.22em] text-muted-foreground">
 												points
 											</p>
 										</div>

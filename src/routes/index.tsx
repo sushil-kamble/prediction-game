@@ -9,6 +9,7 @@ import {
 	SectionEyebrow,
 	SkeletonBlock,
 } from "#/components/app/ui";
+import { Button } from "#/components/ui/button";
 import { api } from "#/lib/api";
 import { type ChallengeStatus, getSportEmoji } from "#/lib/challenge";
 import {
@@ -28,7 +29,7 @@ export const Route = createFileRoute("/")({
 	head: () => ({
 		meta: [
 			{
-				title: "PredictGame | Orange-hot prediction challenges",
+				title: "PredictGame | Live prediction challenges",
 			},
 		],
 	}),
@@ -65,37 +66,38 @@ function HomeRoute() {
 	}, [storedChallenges, summaries]);
 
 	return (
-		<PageShell className="gap-6 py-6 sm:py-8">
-			<GlassCard className="px-5 py-6 sm:px-8 sm:py-8">
-				<div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+		<PageShell className="gap-6 py-6 sm:py-10">
+			{/* Hero */}
+			<GlassCard className="px-5 py-8 sm:px-10 sm:py-12">
+				<div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr]">
 					<div>
 						<SectionEyebrow>Live Sports Picks</SectionEyebrow>
-						<h1 className="font-display text-[2.8rem] leading-[0.95] text-[var(--ink)] sm:text-[4.8rem]">
+						<h1 className="font-display text-[2.6rem] leading-[0.95] text-foreground sm:text-[4.5rem]">
 							One link.
 							<br />
-							One shot.
+							<span className="bg-gradient-to-r from-violet-400 via-purple-400 to-fuchsia-400 bg-clip-text text-transparent">
+								One shot.
+							</span>
 							<br />
 							Live ranks.
 						</h1>
-						<p className="mt-5 max-w-xl text-base leading-7 text-[var(--ink-soft)] sm:text-lg">
+						<p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
 							PredictGame is a mobile-first sports challenge builder for match-day
 							crowds. Create a card stack of prediction questions, share the link,
 							and let Convex update every leaderboard in real time while you score.
 						</p>
-						<div className="mt-6 flex flex-col gap-3 sm:flex-row">
-							<Link
-								to="/admin"
-								className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-transparent bg-[linear-gradient(135deg,var(--orange-500),var(--orange-700))] px-5 text-sm font-semibold text-white no-underline shadow-[0_18px_42px_rgba(224,110,27,0.28)]"
-							>
-								Create a challenge
-								<ArrowRight className="h-4 w-4" />
-							</Link>
-							<a
-								href="#my-challenges"
-								className="inline-flex min-h-12 items-center justify-center rounded-full border border-[color:var(--card-stroke)] bg-white/84 px-5 text-sm font-semibold text-[var(--ink)] no-underline"
-							>
-								My local admin cards
-							</a>
+						<div className="mt-8 flex flex-col gap-3 sm:flex-row">
+							<Button size="lg" asChild>
+								<Link to="/admin" className="no-underline">
+									Create a challenge
+									<ArrowRight className="h-4 w-4" />
+								</Link>
+							</Button>
+							<Button variant="outline" size="lg" asChild>
+								<a href="#my-challenges" className="no-underline">
+									My local admin cards
+								</a>
+							</Button>
 						</div>
 					</div>
 
@@ -119,16 +121,16 @@ function HomeRoute() {
 						].map((item, index) => (
 							<div
 								key={item.title}
-								className="rounded-[1.5rem] border border-white/70 bg-white/70 p-4 shadow-[0_18px_48px_rgba(33,21,10,0.08)] animate-[rise-in_280ms_ease-out]"
+								className="rounded-xl border border-border bg-secondary/50 p-4 animate-[rise-in_280ms_ease-out]"
 								style={{ animationDelay: `${index * 90}ms` }}
 							>
-								<div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(255,191,111,0.9),rgba(243,145,53,0.92))] text-[var(--ink)]">
+								<div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500/20 to-purple-700/20 text-primary">
 									{item.icon}
 								</div>
-								<h2 className="text-base font-semibold text-[var(--ink)]">
+								<h2 className="text-sm font-semibold text-foreground">
 									{item.title}
 								</h2>
-								<p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
+								<p className="mt-1.5 text-sm leading-6 text-muted-foreground">
 									{item.description}
 								</p>
 							</div>
@@ -137,40 +139,35 @@ function HomeRoute() {
 				</div>
 			</GlassCard>
 
+			{/* My Challenges */}
 			<GlassCard className="px-5 py-6 sm:px-8">
 				<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 					<div id="my-challenges">
 						<SectionEyebrow>My Challenges</SectionEyebrow>
-						<h2 className="font-display text-3xl text-[var(--ink)] sm:text-4xl">
+						<h2 className="font-display text-3xl text-foreground sm:text-4xl">
 							Local admin access on this device
 						</h2>
-						<p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--ink-soft)] sm:text-base">
+						<p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
 							Admin access is stored locally in this v1. Open any saved card to
 							continue editing, share the link, or score results live.
 						</p>
 					</div>
-					<Link
-						to="/admin"
-						className="inline-flex min-h-12 items-center justify-center rounded-full border border-[color:var(--card-stroke)] bg-white/84 px-5 text-sm font-semibold text-[var(--ink)] no-underline"
-					>
-						Open admin
-					</Link>
+					<Button variant="outline" asChild>
+						<Link to="/admin" className="no-underline">Open admin</Link>
+					</Button>
 				</div>
 
 				<div className="mt-6 grid gap-4">
 					{storedChallenges.length === 0 ? (
-						<div className="rounded-[1.5rem] border border-dashed border-[color:var(--card-stroke)] bg-white/48 px-5 py-8 text-center">
-							<p className="m-0 text-sm leading-7 text-[var(--ink-soft)]">
+						<div className="rounded-xl border border-dashed border-border bg-secondary/30 px-5 py-8 text-center">
+							<p className="m-0 text-sm leading-7 text-muted-foreground">
 								No local admin cards yet. Start with a fresh match and build your
-								first orange-hot prediction board.
+								first prediction board.
 							</p>
 							<div className="mt-5">
-								<Link
-									to="/admin"
-									className="inline-flex min-h-12 items-center justify-center rounded-full border border-transparent bg-[linear-gradient(135deg,var(--orange-500),var(--orange-700))] px-5 text-sm font-semibold text-white no-underline shadow-[0_18px_42px_rgba(224,110,27,0.28)]"
-								>
-									Create challenge
-								</Link>
+								<Button asChild>
+									<Link to="/admin" className="no-underline">Create challenge</Link>
+								</Button>
 							</div>
 						</div>
 					) : summaries === undefined ? (
@@ -192,32 +189,33 @@ function HomeRoute() {
 				</div>
 			</GlassCard>
 
+			{/* Sports Grid */}
 			<GlassCard className="overflow-hidden px-5 py-6 sm:px-8">
-				<SectionEyebrow>Visual Hook</SectionEyebrow>
+				<SectionEyebrow>Sports</SectionEyebrow>
 				<div className="grid gap-4 sm:grid-cols-[0.8fr_1.2fr]">
-					<div className="rounded-[1.7rem] bg-[linear-gradient(160deg,rgba(255,191,111,0.85),rgba(243,145,53,0.92),rgba(188,79,8,0.96))] p-6 text-white shadow-[0_20px_60px_rgba(170,75,14,0.26)]">
-						<p className="text-xs font-bold uppercase tracking-[0.26em] text-white/72">
+					<div className="rounded-xl bg-gradient-to-br from-violet-600/80 via-purple-600/80 to-fuchsia-700/80 p-6 text-white shadow-[0_16px_48px_rgba(139,92,246,0.2)]">
+						<p className="text-xs font-bold uppercase tracking-[0.26em] text-white/60">
 							Theme
 						</p>
 						<h3 className="mt-3 font-display text-3xl leading-none">
-							Modern orange
+							Built for game day
 						</h3>
-						<p className="mt-4 text-sm leading-6 text-white/88">
-							Warm neutrals, bold gradients, and glassy panels keep the interface
-							lively without drifting into gimmick territory.
+						<p className="mt-4 text-sm leading-6 text-white/75">
+							Deep purples, glass panels, and real-time data keep your
+							prediction board looking sharp on any screen.
 						</p>
 					</div>
 					<div className="grid gap-3 sm:grid-cols-2">
 						{["Cricket", "Football", "F1", "Basketball"].map((sport) => (
 							<div
 								key={sport}
-								className="rounded-[1.4rem] border border-white/70 bg-white/74 px-4 py-4 shadow-[0_16px_40px_rgba(33,21,10,0.08)]"
+								className="rounded-xl border border-border bg-secondary/50 px-4 py-4"
 							>
-								<p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--ink-soft)]">
+								<p className="text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground">
 									{sport}
 								</p>
 								<p className="mt-3 text-4xl">{getSportEmoji(sport)}</p>
-								<p className="mt-3 text-sm leading-6 text-[var(--ink-soft)]">
+								<p className="mt-3 text-sm leading-6 text-muted-foreground">
 									Build a polished pick flow in minutes and keep the action readable
 									on a 375px screen.
 								</p>

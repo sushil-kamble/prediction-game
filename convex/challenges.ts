@@ -62,6 +62,45 @@ function generateAdminSecret() {
 	return crypto.randomUUID().replace(/-/g, "").slice(0, 12);
 }
 
+function sanitizeLogValue(value: unknown): unknown {
+	if (Array.isArray(value)) {
+		return value.map((item) => sanitizeLogValue(item));
+	}
+
+	if (value && typeof value === "object") {
+		return Object.fromEntries(
+			Object.entries(value).map(([key, nestedValue]) => [
+				key,
+				key.toLowerCase().includes("secret")
+					? "[REDACTED]"
+					: sanitizeLogValue(nestedValue),
+			]),
+		);
+	}
+
+	return value;
+}
+
+function logMutationError(
+	mutationName: string,
+	args: Record<string, unknown>,
+	error: unknown,
+) {
+	const challengeId =
+		typeof args.challengeId === "string" ? args.challengeId : null;
+	const details =
+		error instanceof Error
+			? { message: error.message, stack: error.stack }
+			: { message: String(error) };
+
+	console.error("PredictGame mutation failed", {
+		mutationName,
+		challengeId,
+		input: sanitizeLogValue(args),
+		error: details,
+	});
+}
+
 async function requireChallenge(
 	ctx: ReadCtx,
 	challengeId: Id<"challenges">,
@@ -169,26 +208,31 @@ export const createChallenge = mutation({
 		sport: v.string(),
 	}),
 	handler: async (ctx, args) => {
-		const title = requireTrimmed(args.title, "Title");
-		const sport = requireTrimmed(args.sport, "Sport");
-		const adminSecret = generateAdminSecret();
-		const status = "draft" as const;
+		try {
+			const title = requireTrimmed(args.title, "Title");
+			const sport = requireTrimmed(args.sport, "Sport");
+			const adminSecret = generateAdminSecret();
+			const status = "draft" as const;
 
-		const challengeId = await ctx.db.insert("challenges", {
-			title,
-			sport,
-			status,
-			adminSecret,
-			createdAt: Date.now(),
-		});
+			const challengeId = await ctx.db.insert("challenges", {
+				title,
+				sport,
+				status,
+				adminSecret,
+				createdAt: Date.now(),
+			});
 
-		return {
-			challengeId,
-			adminSecret,
-			status,
-			title,
-			sport,
-		};
+			return {
+				challengeId,
+				adminSecret,
+				status,
+				title,
+				sport,
+			};
+		} catch (error) {
+			logMutationError("createChallenge", args, error);
+			throw error;
+		}
 	},
 });
 
@@ -201,29 +245,36 @@ export const addQuestion = mutation({
 		pointValue: v.number(),
 	},
 	handler: async (ctx, args) => {
-		const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
-		if (!challengeId) {
-			throw new Error("Challenge not found.");
-		}
+		try {
+			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+			if (!challengeId) {
+				throw new Error("Challenge not found.");
+			}
 
-		const challenge = await requireAdminChallenge(
-			ctx,
-			challengeId,
-			requireTrimmed(args.adminSecret, "Admin secret"),
-		);
-		if (challenge.status !== "draft") {
-			throw new Error("Questions can only be added while the challenge is in draft.");
-		}
+			const challenge = await requireAdminChallenge(
+				ctx,
+				challengeId,
+				requireTrimmed(args.adminSecret, "Admin secret"),
+			);
+			if (challenge.status !== "draft") {
+				throw new Error(
+					"Questions can only be added while the challenge is in draft.",
+				);
+			}
 
-		const existingQuestions = await listChallengeQuestions(ctx, challengeId);
-		return await ctx.db.insert("questions", {
-			challengeId,
-			text: requireTrimmed(args.text, "Question text"),
-			options: validateOptions(args.options),
-			pointValue: validatePointValue(args.pointValue),
-			correctOptionIndex: null,
-			order: existingQuestions.length,
-		});
+			const existingQuestions = await listChallengeQuestions(ctx, challengeId);
+			return await ctx.db.insert("questions", {
+				challengeId,
+				text: requireTrimmed(args.text, "Question text"),
+				options: validateOptions(args.options),
+				pointValue: validatePointValue(args.pointValue),
+				correctOptionIndex: null,
+				order: existingQuestions.length,
+			});
+		} catch (error) {
+			logMutationError("addQuestion", args, error);
+			throw error;
+		}
 	},
 });
 
@@ -237,32 +288,37 @@ export const updateQuestion = mutation({
 		pointValue: v.number(),
 	},
 	handler: async (ctx, args) => {
-		const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
-		const questionId = ctx.db.normalizeId("questions", args.questionId);
+		try {
+			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+			const questionId = ctx.db.normalizeId("questions", args.questionId);
 
-		if (!challengeId || !questionId) {
-			throw new Error("Question not found.");
-		}
+			if (!challengeId || !questionId) {
+				throw new Error("Question not found.");
+			}
 
-		const challenge = await requireAdminChallenge(
-			ctx,
-			challengeId,
-			requireTrimmed(args.adminSecret, "Admin secret"),
-		);
-		if (challenge.status !== "draft") {
-			throw new Error(
-				"Questions can only be edited while the challenge is in draft.",
+			const challenge = await requireAdminChallenge(
+				ctx,
+				challengeId,
+				requireTrimmed(args.adminSecret, "Admin secret"),
 			);
+			if (challenge.status !== "draft") {
+				throw new Error(
+					"Questions can only be edited while the challenge is in draft.",
+				);
+			}
+
+			const question = await requireQuestion(ctx, questionId);
+			ensureQuestionInChallenge(question, challengeId);
+
+			await ctx.db.patch(questionId, {
+				text: requireTrimmed(args.text, "Question text"),
+				options: validateOptions(args.options),
+				pointValue: validatePointValue(args.pointValue),
+			});
+		} catch (error) {
+			logMutationError("updateQuestion", args, error);
+			throw error;
 		}
-
-		const question = await requireQuestion(ctx, questionId);
-		ensureQuestionInChallenge(question, challengeId);
-
-		await ctx.db.patch(questionId, {
-			text: requireTrimmed(args.text, "Question text"),
-			options: validateOptions(args.options),
-			pointValue: validatePointValue(args.pointValue),
-		});
 	},
 });
 
@@ -273,37 +329,42 @@ export const deleteQuestion = mutation({
 		adminSecret: v.string(),
 	},
 	handler: async (ctx, args) => {
-		const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
-		const questionId = ctx.db.normalizeId("questions", args.questionId);
+		try {
+			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+			const questionId = ctx.db.normalizeId("questions", args.questionId);
 
-		if (!challengeId || !questionId) {
-			throw new Error("Question not found.");
-		}
+			if (!challengeId || !questionId) {
+				throw new Error("Question not found.");
+			}
 
-		const challenge = await requireAdminChallenge(
-			ctx,
-			challengeId,
-			requireTrimmed(args.adminSecret, "Admin secret"),
-		);
-		if (challenge.status !== "draft") {
-			throw new Error(
-				"Questions can only be deleted while the challenge is in draft.",
+			const challenge = await requireAdminChallenge(
+				ctx,
+				challengeId,
+				requireTrimmed(args.adminSecret, "Admin secret"),
 			);
+			if (challenge.status !== "draft") {
+				throw new Error(
+					"Questions can only be deleted while the challenge is in draft.",
+				);
+			}
+
+			const question = await requireQuestion(ctx, questionId);
+			ensureQuestionInChallenge(question, challengeId);
+
+			await ctx.db.delete(questionId);
+
+			const remainingQuestions = await listChallengeQuestions(ctx, challengeId);
+			await Promise.all(
+				remainingQuestions.map((item: Doc<"questions">, index: number) =>
+					item.order === index
+						? Promise.resolve()
+						: ctx.db.patch(item._id, { order: index }),
+				),
+			);
+		} catch (error) {
+			logMutationError("deleteQuestion", args, error);
+			throw error;
 		}
-
-		const question = await requireQuestion(ctx, questionId);
-		ensureQuestionInChallenge(question, challengeId);
-
-		await ctx.db.delete(questionId);
-
-		const remainingQuestions = await listChallengeQuestions(ctx, challengeId);
-		await Promise.all(
-			remainingQuestions.map((item: Doc<"questions">, index: number) =>
-				item.order === index
-					? Promise.resolve()
-					: ctx.db.patch(item._id, { order: index }),
-			),
-		);
 	},
 });
 
@@ -313,26 +374,31 @@ export const publishChallenge = mutation({
 		adminSecret: v.string(),
 	},
 	handler: async (ctx, args) => {
-		const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
-		if (!challengeId) {
-			throw new Error("Challenge not found.");
-		}
+		try {
+			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+			if (!challengeId) {
+				throw new Error("Challenge not found.");
+			}
 
-		const challenge = await requireAdminChallenge(
-			ctx,
-			challengeId,
-			requireTrimmed(args.adminSecret, "Admin secret"),
-		);
-		if (challenge.status !== "draft") {
-			throw new Error("Only draft challenges can be published.");
-		}
+			const challenge = await requireAdminChallenge(
+				ctx,
+				challengeId,
+				requireTrimmed(args.adminSecret, "Admin secret"),
+			);
+			if (challenge.status !== "draft") {
+				throw new Error("Only draft challenges can be published.");
+			}
 
-		const questions = await listChallengeQuestions(ctx, challengeId);
-		if (questions.length === 0) {
-			throw new Error("Add at least one question before publishing.");
-		}
+			const questions = await listChallengeQuestions(ctx, challengeId);
+			if (questions.length === 0) {
+				throw new Error("Add at least one question before publishing.");
+			}
 
-		await ctx.db.patch(challengeId, { status: "open" });
+			await ctx.db.patch(challengeId, { status: "open" });
+		} catch (error) {
+			logMutationError("publishChallenge", args, error);
+			throw error;
+		}
 	},
 });
 
@@ -344,38 +410,43 @@ export const joinChallenge = mutation({
 	},
 	returns: v.id("participants"),
 	handler: async (ctx, args) => {
-		const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
-		if (!challengeId) {
-			throw new Error("Challenge not found.");
-		}
+		try {
+			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+			if (!challengeId) {
+				throw new Error("Challenge not found.");
+			}
 
-		const challenge = await requireChallenge(ctx, challengeId);
-		if (challenge.status === "draft") {
-			throw new Error("This challenge is not open yet.");
-		}
-		if (challenge.status === "closed") {
-			throw new Error("This challenge has ended.");
-		}
+			const challenge = await requireChallenge(ctx, challengeId);
+			if (challenge.status === "draft") {
+				throw new Error("This challenge is not open yet.");
+			}
+			if (challenge.status === "closed") {
+				throw new Error("This challenge has ended.");
+			}
 
-		const uuid = requireTrimmed(args.uuid, "UUID");
-		const nickname = validateNickname(args.nickname);
-		const existing = await ctx.db
-			.query("participants")
-			.withIndex("by_challenge_uuid", (q) =>
-				q.eq("challengeId", challengeId).eq("uuid", uuid),
-			)
-			.unique();
+			const uuid = requireTrimmed(args.uuid, "UUID");
+			const nickname = validateNickname(args.nickname);
+			const existing = await ctx.db
+				.query("participants")
+				.withIndex("by_challenge_uuid", (q) =>
+					q.eq("challengeId", challengeId).eq("uuid", uuid),
+				)
+				.unique();
 
-		if (existing) {
-			return existing._id;
+			if (existing) {
+				return existing._id;
+			}
+
+			return await ctx.db.insert("participants", {
+				challengeId,
+				uuid,
+				nickname,
+				joinedAt: Date.now(),
+			});
+		} catch (error) {
+			logMutationError("joinChallenge", args, error);
+			throw error;
 		}
-
-		return await ctx.db.insert("participants", {
-			challengeId,
-			uuid,
-			nickname,
-			joinedAt: Date.now(),
-		});
 	},
 });
 
@@ -386,6 +457,7 @@ export const submitPredictions = mutation({
 		predictions: v.array(predictionInput),
 	},
 	handler: async (ctx, args) => {
+		try {
 		const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
 		const participantId = ctx.db.normalizeId(
 			"participants",
@@ -459,7 +531,7 @@ export const submitPredictions = mutation({
 
 		const submittedAt = Date.now();
 		await Promise.all(
-			args.predictions.map(async (prediction) => {
+			args.predictions.map(async (prediction: typeof args.predictions[number]) => {
 				const questionId = ctx.db.normalizeId("questions", prediction.questionId);
 				if (!questionId) {
 					throw new Error("One or more selected questions are invalid.");
@@ -474,6 +546,10 @@ export const submitPredictions = mutation({
 				});
 			}),
 		);
+		} catch (error) {
+			logMutationError("submitPredictions", args, error);
+			throw error;
+		}
 	},
 });
 
@@ -485,39 +561,44 @@ export const markCorrectAnswer = mutation({
 		correctOptionIndex: v.number(),
 	},
 	handler: async (ctx, args) => {
-		const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
-		const questionId = ctx.db.normalizeId("questions", args.questionId);
+		try {
+			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+			const questionId = ctx.db.normalizeId("questions", args.questionId);
 
-		if (!challengeId || !questionId) {
-			throw new Error("Question not found.");
-		}
+			if (!challengeId || !questionId) {
+				throw new Error("Question not found.");
+			}
 
-		const challenge = await requireAdminChallenge(
-			ctx,
-			challengeId,
-			requireTrimmed(args.adminSecret, "Admin secret"),
-		);
-		if (challenge.status === "draft") {
-			throw new Error("Publish the challenge before scoring answers.");
-		}
-		if (challenge.status === "closed") {
-			throw new Error("This challenge is closed.");
-		}
+			const challenge = await requireAdminChallenge(
+				ctx,
+				challengeId,
+				requireTrimmed(args.adminSecret, "Admin secret"),
+			);
+			if (challenge.status === "draft") {
+				throw new Error("Publish the challenge before scoring answers.");
+			}
+			if (challenge.status === "closed") {
+				throw new Error("This challenge is closed.");
+			}
 
-		const question = await requireQuestion(ctx, questionId);
-		ensureQuestionInChallenge(question, challengeId);
-		ensureOptionIndex(
-			args.correctOptionIndex,
-			question.options,
-			"Correct option",
-		);
+			const question = await requireQuestion(ctx, questionId);
+			ensureQuestionInChallenge(question, challengeId);
+			ensureOptionIndex(
+				args.correctOptionIndex,
+				question.options,
+				"Correct option",
+			);
 
-		await ctx.db.patch(questionId, {
-			correctOptionIndex: args.correctOptionIndex,
-		});
+			await ctx.db.patch(questionId, {
+				correctOptionIndex: args.correctOptionIndex,
+			});
 
-		if (challenge.status === "open") {
-			await ctx.db.patch(challengeId, { status: "scoring" });
+			if (challenge.status === "open") {
+				await ctx.db.patch(challengeId, { status: "scoring" });
+			}
+		} catch (error) {
+			logMutationError("markCorrectAnswer", args, error);
+			throw error;
 		}
 	},
 });
@@ -528,17 +609,22 @@ export const closeChallenge = mutation({
 		adminSecret: v.string(),
 	},
 	handler: async (ctx, args) => {
-		const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
-		if (!challengeId) {
-			throw new Error("Challenge not found.");
-		}
+		try {
+			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+			if (!challengeId) {
+				throw new Error("Challenge not found.");
+			}
 
-		await requireAdminChallenge(
-			ctx,
-			challengeId,
-			requireTrimmed(args.adminSecret, "Admin secret"),
-		);
-		await ctx.db.patch(challengeId, { status: "closed" });
+			await requireAdminChallenge(
+				ctx,
+				challengeId,
+				requireTrimmed(args.adminSecret, "Admin secret"),
+			);
+			await ctx.db.patch(challengeId, { status: "closed" });
+		} catch (error) {
+			logMutationError("closeChallenge", args, error);
+			throw error;
+		}
 	},
 });
 

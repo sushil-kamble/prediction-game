@@ -59,7 +59,7 @@ function RootDocument({ children }: { children: ReactNode }) {
 			<head>
 				<HeadContent />
 			</head>
-			<body className="font-sans antialiased selection:bg-[rgba(243,145,53,0.24)]">
+			<body className="font-sans antialiased selection:bg-primary/30 selection:text-primary-foreground">
 				<ConvexProvider>
 					<ToastProvider>
 						<ReconnectingBanner />
@@ -98,12 +98,9 @@ function RootErrorBoundary({
 			>
 				<div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
 					<Button onClick={() => reset()}>Try again</Button>
-					<Link
-						to="/"
-						className="inline-flex min-h-12 items-center justify-center rounded-full border border-[color:var(--card-stroke)] bg-white/84 px-5 text-sm font-semibold text-[var(--ink)] no-underline"
-					>
-						Back home
-					</Link>
+					<Button variant="outline" asChild>
+						<Link to="/" className="no-underline">Back home</Link>
+					</Button>
 				</div>
 			</FullScreenState>
 		</RootDocument>
@@ -116,12 +113,9 @@ function RootNotFound() {
 			title="Route not found"
 			description="The page you're looking for doesn't exist in this version."
 		>
-			<Link
-				to="/"
-				className="inline-flex min-h-12 items-center justify-center rounded-full border border-transparent bg-[linear-gradient(135deg,var(--orange-500),var(--orange-700))] px-5 text-sm font-semibold text-white no-underline shadow-[0_18px_42px_rgba(224,110,27,0.28)]"
-			>
-				Go home
-			</Link>
+			<Button asChild>
+				<Link to="/" className="no-underline">Go home</Link>
+			</Button>
 		</FullScreenState>
 	);
 }

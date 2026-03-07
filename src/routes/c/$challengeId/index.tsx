@@ -162,12 +162,9 @@ function PlayerChallengeRoute() {
 				title="Challenge not found"
 				description="This link doesn't point to an active challenge."
 			>
-				<Link
-					to="/"
-					className="inline-flex min-h-12 items-center justify-center rounded-full border border-transparent bg-[linear-gradient(135deg,var(--orange-500),var(--orange-700))] px-5 text-sm font-semibold text-white no-underline shadow-[0_18px_42px_rgba(224,110,27,0.28)]"
-				>
-					Back home
-				</Link>
+				<Button asChild>
+					<Link to="/" className="no-underline">Back home</Link>
+				</Button>
 			</FullScreenState>
 		);
 	}
@@ -187,13 +184,15 @@ function PlayerChallengeRoute() {
 				title="This challenge has ended"
 				description="Predictions are locked. You can still jump straight to the leaderboard."
 			>
-				<Link
-					to="/c/$challengeId/leaderboard"
-					params={{ challengeId }}
-					className="inline-flex min-h-12 items-center justify-center rounded-full border border-transparent bg-[linear-gradient(135deg,var(--orange-500),var(--orange-700))] px-5 text-sm font-semibold text-white no-underline shadow-[0_18px_42px_rgba(224,110,27,0.28)]"
-				>
-					Open leaderboard
-				</Link>
+				<Button asChild>
+					<Link
+						to="/c/$challengeId/leaderboard"
+						params={{ challengeId }}
+						className="no-underline"
+					>
+						Open leaderboard
+					</Link>
+				</Button>
 			</FullScreenState>
 		);
 	}
@@ -279,15 +278,15 @@ function PlayerChallengeRoute() {
 				{!participant ? (
 					<GlassCard className="px-5 py-6 sm:px-8">
 						<SectionEyebrow>Join the challenge</SectionEyebrow>
-						<h1 className="font-display text-4xl leading-none text-[var(--ink)] sm:text-5xl">
+						<h1 className="font-display text-4xl leading-none text-foreground sm:text-5xl">
 							{challenge.title}
 						</h1>
-						<p className="mt-4 text-base leading-7 text-[var(--ink-soft)]">
+						<p className="mt-4 text-base leading-7 text-muted-foreground">
 							One shot. No changes. Lock your picks before the results start moving.
 						</p>
 						<form className="mt-6 flex flex-col gap-4" onSubmit={handleJoin}>
 							<label className="flex flex-col gap-2">
-								<span className="text-sm font-semibold text-[var(--ink)]">
+								<span className="text-sm font-semibold text-foreground">
 									Nickname
 								</span>
 								<Input
@@ -297,7 +296,7 @@ function PlayerChallengeRoute() {
 									maxLength={20}
 								/>
 							</label>
-							<Button type="submit" fullWidth disabled={isJoining}>
+							<Button type="submit" className="w-full" disabled={isJoining}>
 								{isJoining ? "Joining..." : "Let's go"}
 							</Button>
 						</form>
@@ -305,38 +304,40 @@ function PlayerChallengeRoute() {
 				) : hasSubmitted ? (
 					<GlassCard className="px-5 py-6 sm:px-8">
 						<SectionEyebrow>Locked in</SectionEyebrow>
-						<h1 className="font-display text-4xl leading-none text-[var(--ink)] sm:text-5xl">
+						<h1 className="font-display text-4xl leading-none text-foreground sm:text-5xl">
 							You're locked in
 						</h1>
-						<p className="mt-4 text-base leading-7 text-[var(--ink-soft)]">
+						<p className="mt-4 text-base leading-7 text-muted-foreground">
 							Your picks are sealed. Watch the live leaderboard while the admin marks
 							correct answers.
 						</p>
-						<Link
-							to="/c/$challengeId/leaderboard"
-							params={{ challengeId }}
-							className="mt-6 inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-transparent bg-[linear-gradient(135deg,var(--orange-500),var(--orange-700))] px-5 text-sm font-semibold text-white no-underline shadow-[0_18px_42px_rgba(224,110,27,0.28)]"
-						>
-							Open leaderboard
-							<ArrowRight className="h-4 w-4" />
-						</Link>
+						<Button className="mt-6" asChild>
+							<Link
+								to="/c/$challengeId/leaderboard"
+								params={{ challengeId }}
+								className="no-underline"
+							>
+								Open leaderboard
+								<ArrowRight className="h-4 w-4" />
+							</Link>
+						</Button>
 
 						<div className="mt-6 grid gap-4">
 							{orderedQuestions.map((question) => (
 								<div
 									key={question._id}
-									className="rounded-[1.5rem] border border-white/70 bg-white/74 p-4 shadow-[0_18px_42px_rgba(33,21,10,0.08)]"
+									className="rounded-xl border border-border bg-secondary/30 p-4"
 								>
 									<div className="flex items-start justify-between gap-3">
 										<div>
-											<p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--ink-soft)]">
+											<p className="text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground">
 												{question.pointValue} pts
 											</p>
-											<h2 className="mt-2 text-lg font-semibold leading-7 text-[var(--ink)]">
+											<h2 className="mt-2 text-lg font-semibold leading-7 text-foreground">
 												{question.text}
 											</h2>
 										</div>
-										<Lock className="h-4 w-4 text-[var(--orange-700)]" />
+										<Lock className="h-4 w-4 text-primary/60" />
 									</div>
 									<div className="mt-4 grid gap-3">
 										{question.options.map((option, optionIndex) => (
@@ -371,14 +372,14 @@ function PlayerChallengeRoute() {
 							{orderedQuestions.map((question) => (
 								<div
 									key={question._id}
-									className="rounded-[1.5rem] border border-white/70 bg-white/74 p-4 shadow-[0_18px_42px_rgba(33,21,10,0.08)]"
+									className="rounded-xl border border-border bg-secondary/30 p-4"
 								>
 									<div className="flex items-start justify-between gap-3">
 										<div>
-											<p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--ink-soft)]">
+											<p className="text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground">
 												{question.pointValue} pts
 											</p>
-											<h2 className="mt-2 text-lg font-semibold leading-7 text-[var(--ink)]">
+											<h2 className="mt-2 text-lg font-semibold leading-7 text-foreground">
 												{question.text}
 											</h2>
 										</div>
@@ -407,12 +408,12 @@ function PlayerChallengeRoute() {
 
 			{participant && !hasSubmitted ? (
 				<div className="fixed inset-x-0 bottom-0 z-40 px-4 pb-4">
-					<div className="mx-auto flex max-w-5xl items-center gap-3 rounded-[1.7rem] border border-white/70 bg-[rgba(255,248,241,0.96)] px-4 py-4 shadow-[0_24px_72px_rgba(33,21,10,0.16)] backdrop-blur-xl">
+					<div className="mx-auto flex max-w-5xl items-center gap-3 rounded-xl border border-border bg-card/95 px-4 py-4 shadow-[0_20px_60px_rgba(0,0,0,0.4)] backdrop-blur-xl">
 						<div className="flex-1">
-							<p className="m-0 text-xs font-bold uppercase tracking-[0.22em] text-[var(--ink-soft)]">
+							<p className="m-0 text-xs font-bold uppercase tracking-[0.22em] text-muted-foreground">
 								Progress
 							</p>
-							<p className="mt-1 text-sm font-semibold text-[var(--ink)]">
+							<p className="mt-1 text-sm font-semibold text-foreground">
 								{answeredCount} of {orderedQuestions.length} answered
 							</p>
 						</div>
@@ -433,12 +434,12 @@ function PlayerChallengeRoute() {
 				description="You can't change them after this. Make sure every answer looks right before you confirm."
 				footer={
 					<>
-						<Button fullWidth onClick={handleSubmitPredictions} disabled={isSubmitting}>
+						<Button className="w-full" onClick={handleSubmitPredictions} disabled={isSubmitting}>
 							{isSubmitting ? "Submitting..." : "Confirm picks"}
 						</Button>
 						<Button
-							fullWidth
-							variant="secondary"
+							variant="outline"
+							className="w-full"
 							onClick={() => setIsConfirmOpen(false)}
 						>
 							Go back
@@ -472,7 +473,7 @@ function PlayerHeader({
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div>
 					<SectionEyebrow>PredictGame</SectionEyebrow>
-					<h1 className="font-display text-3xl leading-none text-[var(--ink)]">
+					<h1 className="font-display text-3xl leading-none text-foreground">
 						{title}
 					</h1>
 					<div className="mt-3 flex flex-wrap gap-2">
@@ -480,13 +481,15 @@ function PlayerHeader({
 						<StatusBadge status={status} />
 					</div>
 				</div>
-				<Link
-					to="/c/$challengeId/leaderboard"
-					params={{ challengeId }}
-					className="inline-flex min-h-12 items-center justify-center rounded-full border border-[color:var(--card-stroke)] bg-white/84 px-5 text-sm font-semibold text-[var(--ink)] no-underline"
-				>
-					Leaderboard
-				</Link>
+				<Button variant="outline" asChild>
+					<Link
+						to="/c/$challengeId/leaderboard"
+						params={{ challengeId }}
+						className="no-underline"
+					>
+						Leaderboard
+					</Link>
+				</Button>
 			</div>
 		</GlassCard>
 	);

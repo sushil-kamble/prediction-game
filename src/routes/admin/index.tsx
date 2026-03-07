@@ -126,17 +126,17 @@ function AdminHomeRoute() {
 					<div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
 						<div>
 							<SectionEyebrow>Admin Mode</SectionEyebrow>
-							<h1 className="font-display text-4xl leading-none text-[var(--ink)] sm:text-5xl">
+							<h1 className="font-display text-4xl leading-none text-foreground sm:text-5xl">
 								Build the board
 							</h1>
-							<p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--ink-soft)] sm:text-base">
+							<p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
 								Create prediction questions on this device, publish the challenge,
-								and score results from the same orange control room.
+								and score results from the same control room.
 							</p>
 						</div>
-						<div className="rounded-[1.4rem] border border-white/70 bg-white/72 px-4 py-4 text-sm leading-6 text-[var(--ink-soft)] shadow-[0_18px_42px_rgba(33,21,10,0.08)]">
-							<div className="flex items-center gap-2 text-[var(--ink)]">
-								<ShieldCheck className="h-4 w-4" />
+						<div className="rounded-xl border border-border bg-secondary/50 px-4 py-4 text-sm leading-6 text-muted-foreground">
+							<div className="flex items-center gap-2 text-foreground">
+								<ShieldCheck className="h-4 w-4 text-primary" />
 								<span className="font-semibold">Device-specific admin access</span>
 							</div>
 							<p className="mt-2 mb-0">
@@ -151,7 +151,7 @@ function AdminHomeRoute() {
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 						<div>
 							<SectionEyebrow>Saved Locally</SectionEyebrow>
-							<h2 className="font-display text-3xl text-[var(--ink)]">
+							<h2 className="font-display text-3xl text-foreground">
 								My challenges
 							</h2>
 						</div>
@@ -163,8 +163,8 @@ function AdminHomeRoute() {
 
 					<div className="mt-6 grid gap-4">
 						{storedChallenges.length === 0 ? (
-							<div className="rounded-[1.5rem] border border-dashed border-[color:var(--card-stroke)] bg-white/50 px-5 py-8 text-center">
-								<p className="m-0 text-sm leading-7 text-[var(--ink-soft)]">
+							<div className="rounded-xl border border-dashed border-border bg-secondary/30 px-5 py-8 text-center">
+								<p className="m-0 text-sm leading-7 text-muted-foreground">
 									You haven't created anything on this device yet.
 								</p>
 							</div>
@@ -189,18 +189,17 @@ function AdminHomeRoute() {
 
 				<Link
 					to="/"
-					className="inline-flex items-center justify-center text-sm font-semibold text-[var(--ink-soft)]"
+					className="inline-flex items-center justify-center text-sm font-semibold text-muted-foreground"
 				>
 					Back to landing
 				</Link>
 			</PageShell>
 
 			<div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-4 pb-4">
-				<div className="mx-auto max-w-5xl bg-gradient-to-t from-[rgba(255,244,232,0.96)] via-[rgba(255,244,232,0.88)] to-transparent pt-6">
+				<div className="mx-auto max-w-5xl bg-gradient-to-t from-background via-background/90 to-transparent pt-6">
 					<Button
-						fullWidth
+						className="pointer-events-auto w-full"
 						onClick={() => setIsSheetOpen(true)}
-						className="pointer-events-auto"
 					>
 						<Plus className="h-4 w-4" />
 						New challenge
@@ -220,7 +219,7 @@ function AdminHomeRoute() {
 			>
 				<form className="flex flex-col gap-4" onSubmit={handleCreateChallenge}>
 					<label className="flex flex-col gap-2">
-						<span className="text-sm font-semibold text-[var(--ink)]">
+						<span className="text-sm font-semibold text-foreground">
 							Challenge title
 						</span>
 						<Input
@@ -232,7 +231,7 @@ function AdminHomeRoute() {
 					</label>
 
 					<div className="flex flex-col gap-3">
-						<label className="text-sm font-semibold text-[var(--ink)]">
+						<label className="text-sm font-semibold text-foreground">
 							Sport
 						</label>
 						<div className="flex flex-wrap gap-2">
@@ -241,7 +240,7 @@ function AdminHomeRoute() {
 									key={suggestion}
 									type="button"
 									onClick={() => setSport(suggestion === "Other" ? "" : suggestion)}
-									className="inline-flex min-h-11 items-center rounded-full border border-[color:var(--card-stroke)] bg-white/78 px-4 text-sm font-semibold text-[var(--ink)]"
+									className="inline-flex min-h-10 items-center rounded-xl border border-border bg-secondary px-4 text-sm font-semibold text-foreground hover:border-primary/30 hover:bg-accent transition-colors"
 								>
 									{suggestion}
 								</button>
@@ -256,13 +255,13 @@ function AdminHomeRoute() {
 					</div>
 
 					<div className="flex flex-col gap-3 pt-2">
-						<Button type="submit" fullWidth disabled={isSubmitting}>
+						<Button type="submit" className="w-full" disabled={isSubmitting}>
 							{isSubmitting ? "Creating..." : "Create challenge"}
 						</Button>
 						<Button
 							type="button"
-							variant="secondary"
-							fullWidth
+							variant="outline"
+							className="w-full"
 							onClick={() => setIsSheetOpen(false)}
 							disabled={isSubmitting}
 						>

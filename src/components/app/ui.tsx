@@ -1,36 +1,14 @@
-import type {
-	ButtonHTMLAttributes,
-	InputHTMLAttributes,
-	ReactNode,
-	TextareaHTMLAttributes,
-} from "react";
+import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ChevronRight, X } from "lucide-react";
+import { Button as ShadButton } from "#/components/ui/button";
+import { Input as ShadInput } from "#/components/ui/input";
+import { Textarea as ShadTextarea } from "#/components/ui/textarea";
+import { Badge } from "#/components/ui/badge";
+import { Skeleton } from "#/components/ui/skeleton";
 import type { ChallengeStatus } from "#/lib/challenge";
 import { getSportEmoji, getStatusLabel } from "#/lib/challenge";
 import { cn } from "#/lib/utils";
-
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-	variant?: "primary" | "secondary" | "ghost" | "danger";
-	fullWidth?: boolean;
-};
-
-const buttonClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
-	primary:
-		"border-transparent bg-[linear-gradient(135deg,var(--orange-500),var(--orange-700))] text-white shadow-[0_18px_42px_rgba(224,110,27,0.28)]",
-	secondary:
-		"border-[color:var(--card-stroke)] bg-white/88 text-[var(--ink)] shadow-[0_16px_40px_rgba(33,21,10,0.08)]",
-	ghost: "border-transparent bg-transparent text-[var(--ink-soft)] shadow-none",
-	danger:
-		"border-transparent bg-[linear-gradient(135deg,#fb7185,#e11d48)] text-white shadow-[0_18px_42px_rgba(190,24,93,0.2)]",
-};
-
-const statusClasses: Record<ChallengeStatus, string> = {
-	draft: "bg-[rgba(255,247,236,0.9)] text-[color:var(--warning-ink)]",
-	open: "bg-[rgba(255,255,255,0.9)] text-[color:var(--ink)]",
-	scoring: "bg-[rgba(255,242,229,0.94)] text-[color:var(--orange-700)]",
-	closed: "bg-[rgba(40,28,18,0.92)] text-white",
-};
 
 export function PageShell({
 	children,
@@ -64,81 +42,46 @@ export function SectionEyebrow({
 	className?: string;
 }) {
 	return (
-		<p className={cn("mb-3 text-xs font-extrabold uppercase tracking-[0.32em] text-[color:var(--ink-soft)]", className)}>
+		<p className={cn("mb-3 text-xs font-extrabold uppercase tracking-[0.32em] text-primary/70", className)}>
 			{children}
 		</p>
 	);
 }
 
-export function Button({
-	className,
-	variant = "primary",
-	fullWidth = false,
-	...props
-}: ButtonProps) {
-	return (
-		<button
-			{...props}
-			className={cn(
-				"inline-flex min-h-12 items-center justify-center gap-2 rounded-full border px-5 text-sm font-semibold transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50",
-				buttonClasses[variant],
-				fullWidth && "w-full",
-				className,
-			)}
-		/>
-	);
-}
-
-export function Input(
-	props: InputHTMLAttributes<HTMLInputElement> & { className?: string },
-) {
-	return (
-		<input
-			{...props}
-			className={cn(
-				"field-shell w-full rounded-[1.2rem] border px-4 py-3 text-base text-[var(--ink)] outline-none placeholder:text-[color:var(--ink-soft)]",
-				props.className,
-			)}
-		/>
-	);
-}
-
-export function Textarea(
-	props: TextareaHTMLAttributes<HTMLTextAreaElement> & {
-		className?: string;
-	},
-) {
-	return (
-		<textarea
-			{...props}
-			className={cn(
-				"field-shell min-h-30 w-full rounded-[1.2rem] border px-4 py-3 text-base text-[var(--ink)] outline-none placeholder:text-[color:var(--ink-soft)]",
-				props.className,
-			)}
-		/>
-	);
-}
+export {
+	ShadButton as Button,
+	ShadInput as Input,
+	ShadTextarea as Textarea,
+};
 
 export function SportBadge({ sport }: { sport: string }) {
 	return (
-		<span className="inline-flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.54)] bg-white/72 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--ink-soft)]">
+		<Badge variant="outline" className="gap-1.5 border-border bg-secondary px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-secondary-foreground">
 			<span>{getSportEmoji(sport)}</span>
 			<span>{sport}</span>
-		</span>
+		</Badge>
 	);
 }
 
+const statusStyles: Record<ChallengeStatus, string> = {
+	draft: "border-yellow-500/30 bg-yellow-500/10 text-yellow-400",
+	open: "border-primary/30 bg-primary/10 text-primary",
+	scoring: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
+	closed: "border-muted-foreground/30 bg-muted text-muted-foreground",
+};
+
 export function StatusBadge({ status }: { status: ChallengeStatus }) {
 	return (
-		<span
+		<Badge
+			variant="outline"
 			className={cn(
-				"inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-extrabold uppercase tracking-[0.18em]",
-				statusClasses[status],
+				"gap-1.5 px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider",
+				statusStyles[status],
 			)}
 		>
-			<span className="h-2 w-2 rounded-full bg-current" />
+			<span className="h-1.5 w-1.5 rounded-full bg-current" />
 			{getStatusLabel(status)}
-		</span>
+		</Badge>
 	);
 }
 
@@ -154,14 +97,14 @@ export function MetricPill({
 	return (
 		<div
 			className={cn(
-				"rounded-[1.25rem] border border-white/60 bg-white/68 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]",
+				"rounded-xl border border-border bg-secondary px-4 py-3",
 				className,
 			)}
 		>
-			<p className="m-0 text-[11px] font-bold uppercase tracking-[0.24em] text-[color:var(--ink-soft)]">
+			<p className="m-0 text-[11px] font-bold uppercase tracking-[0.24em] text-muted-foreground">
 				{label}
 			</p>
-			<p className="mt-1 text-lg font-semibold text-[var(--ink)]">{value}</p>
+			<p className="mt-1 text-lg font-semibold text-foreground">{value}</p>
 		</div>
 	);
 }
@@ -173,7 +116,7 @@ export function OptionButton({
 	locked = false,
 	className,
 	...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & {
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & {
 	selected?: boolean;
 	correct?: boolean;
 	locked?: boolean;
@@ -182,19 +125,19 @@ export function OptionButton({
 		<button
 			{...props}
 			className={cn(
-				"flex min-h-12 w-full items-center justify-between rounded-[1.15rem] border px-4 py-3 text-left text-sm font-semibold transition",
+				"flex min-h-12 w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-all",
 				selected &&
-					"border-[rgba(243,132,43,0.65)] bg-[rgba(255,241,228,0.9)] text-[var(--orange-700)]",
+					"border-primary/50 bg-primary/12 text-primary shadow-[0_0_20px_rgba(139,92,246,0.08)]",
 				!selected &&
-					"border-[color:var(--card-stroke)] bg-white/78 text-[var(--ink)]",
+					"border-border bg-secondary text-foreground hover:border-primary/30 hover:bg-primary/8",
 				correct &&
-					"border-emerald-300 bg-[rgba(232,255,240,0.95)] text-[color:var(--success-ink)]",
+					"border-emerald-500/40 bg-emerald-500/10 text-emerald-400",
 				locked && "cursor-default",
 				className,
 			)}
 		>
 			<span>{children}</span>
-			<ChevronRight className="h-4 w-4 opacity-60" />
+			<ChevronRight className="h-4 w-4 opacity-40" />
 		</button>
 	);
 }
@@ -209,17 +152,15 @@ export function InlineNotice({
 	className?: string;
 }) {
 	const toneMap = {
-		neutral: "border-white/60 bg-white/76 text-[var(--ink)]",
-		warning:
-			"border-[rgba(255,188,96,0.58)] bg-[rgba(255,246,233,0.94)] text-[color:var(--warning-ink)]",
-		success:
-			"border-emerald-200 bg-[rgba(239,255,246,0.92)] text-[color:var(--success-ink)]",
+		neutral: "border-border bg-secondary text-foreground",
+		warning: "border-yellow-500/30 bg-yellow-500/8 text-yellow-300",
+		success: "border-emerald-500/30 bg-emerald-500/8 text-emerald-300",
 	};
 
 	return (
 		<div
 			className={cn(
-				"rounded-[1.4rem] border px-4 py-4 text-sm font-medium leading-6",
+				"rounded-xl border px-4 py-4 text-sm font-medium leading-6",
 				toneMap[tone],
 				className,
 			)}
@@ -242,10 +183,10 @@ export function FullScreenState({
 		<PageShell className="min-h-[calc(100vh-2rem)] justify-center py-10">
 			<GlassCard className="mx-auto max-w-xl px-6 py-8 text-center">
 				<SectionEyebrow>PredictGame</SectionEyebrow>
-				<h1 className="font-display text-4xl leading-none text-[var(--ink)]">
+				<h1 className="font-display text-4xl leading-none text-foreground">
 					{title}
 				</h1>
-				<p className="mt-4 text-base leading-7 text-[var(--ink-soft)]">
+				<p className="mt-4 text-base leading-7 text-muted-foreground">
 					{description}
 				</p>
 				{children ? <div className="mt-6">{children}</div> : null}
@@ -254,12 +195,8 @@ export function FullScreenState({
 	);
 }
 
-export function SkeletonBlock({
-	className,
-}: {
-	className?: string;
-}) {
-	return <div className={cn("rounded-2xl bg-[rgba(255,255,255,0.58)] shimmer", className)} />;
+export function SkeletonBlock({ className }: { className?: string }) {
+	return <Skeleton className={cn("rounded-xl", className)} />;
 }
 
 export function BottomSheet({
@@ -282,22 +219,22 @@ export function BottomSheet({
 	}
 
 	return createPortal(
-		<div className="fixed inset-0 z-[100] flex items-end justify-center bg-[rgba(24,13,4,0.36)] p-0 backdrop-blur-sm">
+		<div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm">
 			<button
 				type="button"
 				onClick={onClose}
 				className="absolute inset-0 cursor-default"
 				aria-label="Close dialog"
 			/>
-			<div className="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-t-[2rem] border border-white/70 bg-[rgba(255,248,241,0.98)] px-5 py-5 shadow-[0_-18px_64px_rgba(20,13,6,0.18)] animate-[sheet-in_240ms_ease-out]">
-				<div className="mx-auto mb-4 h-1.5 w-14 rounded-full bg-black/10" />
+			<div className="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl border border-border bg-[rgba(14,8,32,0.98)] px-5 py-5 shadow-[0_-18px_64px_rgba(0,0,0,0.4)] animate-[sheet-in_240ms_ease-out]">
+				<div className="mx-auto mb-4 h-1.5 w-14 rounded-full bg-primary/20" />
 				<div className="mb-5 flex items-start gap-4">
 					<div className="flex-1">
-						<h2 className="font-display text-3xl leading-none text-[var(--ink)]">
+						<h2 className="font-display text-3xl leading-none text-foreground">
 							{title}
 						</h2>
 						{description ? (
-							<p className="mt-3 text-sm leading-6 text-[var(--ink-soft)]">
+							<p className="mt-3 text-sm leading-6 text-muted-foreground">
 								{description}
 							</p>
 						) : null}
@@ -305,7 +242,7 @@ export function BottomSheet({
 					<button
 						type="button"
 						onClick={onClose}
-						className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--card-stroke)] bg-white/84 text-[var(--ink-soft)]"
+						className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-secondary text-muted-foreground hover:text-foreground"
 						aria-label="Dismiss"
 					>
 						<X className="h-4 w-4" />

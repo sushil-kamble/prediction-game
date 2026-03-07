@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
 import type { ChallengeStatus } from "#/lib/challenge";
 import { getSportEmoji } from "#/lib/challenge";
-import { GlassCard, SportBadge, StatusBadge } from "#/components/app/ui";
+import { SportBadge, StatusBadge } from "#/components/app/ui";
 
 type ChallengeCardProps = {
 	challengeId: string;
@@ -27,9 +27,9 @@ export function ChallengeCard({
 			params={{ challengeId }}
 			className="block no-underline"
 		>
-			<GlassCard className="group px-5 py-5 transition hover:-translate-y-0.5">
+			<div className="glass-card group px-5 py-5 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_24px_72px_rgba(139,92,246,0.12)]">
 				<div className="flex items-start gap-4">
-					<div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.3rem] bg-[linear-gradient(135deg,rgba(255,191,111,0.9),rgba(243,145,53,0.9))] text-2xl shadow-[0_16px_40px_rgba(224,110,27,0.22)]">
+					<div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-700/20 text-2xl ring-1 ring-primary/20">
 						{getSportEmoji(sport)}
 					</div>
 					<div className="min-w-0 flex-1">
@@ -37,16 +37,16 @@ export function ChallengeCard({
 							<SportBadge sport={sport} />
 							<StatusBadge status={status} />
 						</div>
-						<h3 className="mt-3 text-lg font-semibold leading-7 text-[var(--ink)]">
+						<h3 className="mt-3 text-lg font-semibold leading-7 text-foreground">
 							{title}
 						</h3>
-						<p className="mt-2 flex items-center gap-2 text-sm font-semibold text-[var(--orange-700)]">
+						<p className="mt-2 flex items-center gap-2 text-sm font-semibold text-primary">
 							{label}
 							<ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
 						</p>
 					</div>
 				</div>
-			</GlassCard>
+			</div>
 		</Link>
 	);
 }

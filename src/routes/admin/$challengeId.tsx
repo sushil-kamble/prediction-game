@@ -126,12 +126,9 @@ function AdminChallengeRoute() {
 				title="Challenge not found"
 				description="This admin link doesn't map to a challenge on the current Convex deployment."
 			>
-				<Link
-					to="/admin"
-					className="inline-flex min-h-12 items-center justify-center rounded-full border border-transparent bg-[linear-gradient(135deg,var(--orange-500),var(--orange-700))] px-5 text-sm font-semibold text-white no-underline shadow-[0_18px_42px_rgba(224,110,27,0.28)]"
-				>
-					Back to admin
-				</Link>
+				<Button asChild>
+					<Link to="/admin" className="no-underline">Back to admin</Link>
+				</Button>
 			</FullScreenState>
 		);
 	}
@@ -304,14 +301,13 @@ function AdminChallengeRoute() {
 			<PageShell className="gap-6 py-6 sm:py-8">
 				<GlassCard className="px-5 py-6 sm:px-8">
 					<div className="flex flex-wrap items-center gap-3">
-						<Link
-							to="/admin"
-							className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[color:var(--card-stroke)] bg-white/84 px-4 text-sm font-semibold text-[var(--ink)] no-underline"
-						>
-							<ArrowLeft className="h-4 w-4" />
-							Back
-						</Link>
-						<span className="rounded-full border border-[color:var(--card-stroke)] bg-white/72 px-3 py-1.5 text-xs font-extrabold uppercase tracking-[0.22em] text-[var(--ink-soft)]">
+						<Button variant="outline" size="sm" asChild>
+							<Link to="/admin" className="no-underline">
+								<ArrowLeft className="h-4 w-4" />
+								Back
+							</Link>
+						</Button>
+						<span className="rounded-lg border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.22em] text-primary">
 							Admin mode
 						</span>
 					</div>
@@ -319,7 +315,7 @@ function AdminChallengeRoute() {
 					<div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 						<div>
 							<SectionEyebrow>Challenge</SectionEyebrow>
-							<h1 className="font-display text-4xl leading-none text-[var(--ink)] sm:text-5xl">
+							<h1 className="font-display text-4xl leading-none text-foreground sm:text-5xl">
 								{challenge.title}
 							</h1>
 							<div className="mt-4 flex flex-wrap gap-2">
@@ -356,13 +352,13 @@ function AdminChallengeRoute() {
 									<SectionEyebrow>
 										{editingQuestionId ? "Edit question" : "Question composer"}
 									</SectionEyebrow>
-									<h2 className="font-display text-3xl text-[var(--ink)]">
+									<h2 className="font-display text-3xl text-foreground">
 										{editingQuestionId
 											? "Update the pick card"
 											: "Add a new pick card"}
 									</h2>
 								</div>
-								<Button variant="secondary" onClick={resetForm}>
+								<Button variant="outline" onClick={resetForm}>
 									Clear form
 								</Button>
 							</div>
@@ -377,7 +373,7 @@ function AdminChallengeRoute() {
 
 							<form className="mt-5 flex flex-col gap-4" onSubmit={handleSaveQuestion}>
 								<label className="flex flex-col gap-2">
-									<span className="text-sm font-semibold text-[var(--ink)]">
+									<span className="text-sm font-semibold text-foreground">
 										Question
 									</span>
 									<Textarea
@@ -389,12 +385,13 @@ function AdminChallengeRoute() {
 
 								<div className="flex flex-col gap-3">
 									<div className="flex items-center justify-between">
-										<span className="text-sm font-semibold text-[var(--ink)]">
+										<span className="text-sm font-semibold text-foreground">
 											Options
 										</span>
 										<Button
 											type="button"
 											variant="ghost"
+											size="sm"
 											onClick={() =>
 												setOptions((current) =>
 													current.length >= 5 ? current : [...current, ""],
@@ -420,7 +417,8 @@ function AdminChallengeRoute() {
 											/>
 											<Button
 												type="button"
-												variant="secondary"
+												variant="outline"
+												size="sm"
 												onClick={() =>
 													setOptions((current) =>
 														current.length <= 2
@@ -441,31 +439,31 @@ function AdminChallengeRoute() {
 								<div className="flex items-center gap-3">
 									<Button
 										type="button"
-										variant="secondary"
+										variant="outline"
 										onClick={() =>
 											setPointValue((current) => Math.max(1, current - 1))
 										}
 									>
 										-1
 									</Button>
-									<div className="flex-1 rounded-[1.2rem] border border-[color:var(--card-stroke)] bg-white/76 px-4 py-3 text-center">
-										<p className="m-0 text-xs font-bold uppercase tracking-[0.24em] text-[var(--ink-soft)]">
+									<div className="flex-1 rounded-xl border border-border bg-secondary/50 px-4 py-3 text-center">
+										<p className="m-0 text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground">
 											Point value
 										</p>
-										<p className="mt-1 text-2xl font-semibold text-[var(--ink)]">
+										<p className="mt-1 text-2xl font-semibold text-foreground">
 											{pointValue}
 										</p>
 									</div>
 									<Button
 										type="button"
-										variant="secondary"
+										variant="outline"
 										onClick={() => setPointValue((current) => current + 1)}
 									>
 										+1
 									</Button>
 								</div>
 
-								<Button type="submit" fullWidth disabled={isSaving}>
+								<Button type="submit" className="w-full" disabled={isSaving}>
 									{isSaving
 										? "Saving..."
 										: editingQuestionId
@@ -479,12 +477,11 @@ function AdminChallengeRoute() {
 							<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 								<div>
 									<SectionEyebrow>Publish</SectionEyebrow>
-									<h2 className="font-display text-3xl text-[var(--ink)]">
+									<h2 className="font-display text-3xl text-foreground">
 										Launch the challenge
 									</h2>
 								</div>
 								<Button
-									fullWidth
 									className="sm:w-auto"
 									onClick={handlePublish}
 									disabled={
@@ -511,7 +508,7 @@ function AdminChallengeRoute() {
 										Share
 									</Button>
 									<Button
-										variant="secondary"
+										variant="outline"
 										onClick={async () => {
 											if (navigator.clipboard) {
 												await navigator.clipboard.writeText(shareUrl);
@@ -532,17 +529,19 @@ function AdminChallengeRoute() {
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 						<div>
 							<SectionEyebrow>Question list</SectionEyebrow>
-							<h2 className="font-display text-3xl text-[var(--ink)]">
+							<h2 className="font-display text-3xl text-foreground">
 								Current stack
 							</h2>
 						</div>
-						<Link
-							to="/c/$challengeId/leaderboard"
-							params={{ challengeId }}
-							className="inline-flex min-h-12 items-center justify-center rounded-full border border-[color:var(--card-stroke)] bg-white/84 px-5 text-sm font-semibold text-[var(--ink)] no-underline"
-						>
-							Preview leaderboard
-						</Link>
+						<Button variant="outline" asChild>
+							<Link
+								to="/c/$challengeId/leaderboard"
+								params={{ challengeId }}
+								className="no-underline"
+							>
+								Preview leaderboard
+							</Link>
+						</Button>
 					</div>
 
 					<div className="mt-6 grid gap-4">
@@ -554,31 +553,33 @@ function AdminChallengeRoute() {
 							orderedQuestions.map((question, index) => (
 								<div
 									key={question._id}
-									className="rounded-[1.5rem] border border-white/70 bg-white/74 p-4 shadow-[0_18px_42px_rgba(33,21,10,0.08)]"
+									className="rounded-xl border border-border bg-secondary/30 p-4"
 								>
 									<div className="flex items-start justify-between gap-3">
 										<div>
-											<p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--ink-soft)]">
+											<p className="text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground">
 												Question {index + 1}
 											</p>
-											<h3 className="mt-2 text-lg font-semibold leading-7 text-[var(--ink)]">
+											<h3 className="mt-2 text-lg font-semibold leading-7 text-foreground">
 												{question.text}
 											</h3>
 										</div>
 										{hasAdminAccess ? (
 											<div className="flex items-center gap-2">
 												<Button
-													variant="secondary"
+													variant="outline"
+													size="sm"
 													onClick={() => beginEditing(question)}
 												>
-													<Pencil className="h-4 w-4" />
+													<Pencil className="h-3.5 w-3.5" />
 													Edit
 												</Button>
 												<Button
-													variant="secondary"
+													variant="outline"
+													size="sm"
 													onClick={() => setDeleteTarget(question)}
 												>
-													<Trash2 className="h-4 w-4" />
+													<Trash2 className="h-3.5 w-3.5" />
 													Delete
 												</Button>
 											</div>
@@ -608,7 +609,7 @@ function AdminChallengeRoute() {
 						<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 							<div>
 								<SectionEyebrow>Answer marking</SectionEyebrow>
-								<h2 className="font-display text-3xl text-[var(--ink)]">
+								<h2 className="font-display text-3xl text-foreground">
 									Score the board live
 								</h2>
 							</div>
@@ -623,9 +624,9 @@ function AdminChallengeRoute() {
 							{orderedQuestions.map((question) => (
 								<div
 									key={question._id}
-									className="rounded-[1.5rem] border border-white/70 bg-white/74 p-4 shadow-[0_18px_42px_rgba(33,21,10,0.08)]"
+									className="rounded-xl border border-border bg-secondary/30 p-4"
 								>
-									<h3 className="text-lg font-semibold leading-7 text-[var(--ink)]">
+									<h3 className="text-lg font-semibold leading-7 text-foreground">
 										{question.text}
 									</h3>
 									<div className="mt-4 grid gap-3">
@@ -651,14 +652,13 @@ function AdminChallengeRoute() {
 						</div>
 
 						<div className="mt-6 flex flex-col gap-3 sm:flex-row">
-							<a
-								href={leaderboardUrl}
-								className="inline-flex min-h-12 items-center justify-center rounded-full border border-[color:var(--card-stroke)] bg-white/84 px-5 text-sm font-semibold text-[var(--ink)] no-underline"
-							>
-								Open leaderboard
-							</a>
+							<Button variant="outline" asChild>
+								<a href={leaderboardUrl} className="no-underline">
+									Open leaderboard
+								</a>
+							</Button>
 							<Button
-								variant="danger"
+								variant="destructive"
 								onClick={() => setIsCloseSheetOpen(true)}
 							>
 								Close challenge
@@ -675,12 +675,12 @@ function AdminChallengeRoute() {
 				description="This removes the pick card from the draft challenge."
 				footer={
 					<>
-						<Button fullWidth variant="danger" onClick={handleDeleteQuestion}>
+						<Button variant="destructive" className="w-full" onClick={handleDeleteQuestion}>
 							Delete question
 						</Button>
 						<Button
-							fullWidth
-							variant="secondary"
+							variant="outline"
+							className="w-full"
 							onClick={() => setDeleteTarget(null)}
 						>
 							Keep it
@@ -696,12 +696,12 @@ function AdminChallengeRoute() {
 				description="On mobile this uses the native share sheet. Desktop falls back to clipboard."
 				footer={
 					<>
-						<Button fullWidth onClick={handleShare} disabled={isSharing}>
+						<Button className="w-full" onClick={handleShare} disabled={isSharing}>
 							{isSharing ? "Sharing..." : "Share now"}
 						</Button>
 						<Button
-							fullWidth
-							variant="secondary"
+							variant="outline"
+							className="w-full"
 							onClick={() => setIsShareSheetOpen(false)}
 						>
 							Cancel
@@ -720,16 +720,16 @@ function AdminChallengeRoute() {
 				footer={
 					<>
 						<Button
-							fullWidth
-							variant="danger"
+							variant="destructive"
+							className="w-full"
 							onClick={handleCloseChallenge}
 							disabled={isClosing}
 						>
 							{isClosing ? "Closing..." : "Close challenge"}
 						</Button>
 						<Button
-							fullWidth
-							variant="secondary"
+							variant="outline"
+							className="w-full"
 							onClick={() => setIsCloseSheetOpen(false)}
 						>
 							Keep open
