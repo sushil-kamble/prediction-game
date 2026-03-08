@@ -352,7 +352,7 @@ function PlayerChallengeRoute() {
 		)
 	}
 
-	if (challenge.status === "scoring" && !hasSubmitted) {
+	if (challenge.status === "scoring" && !hasSubmitted && !participant) {
 		return (
 			<FullScreenState
 				title="Predictions are locked"
@@ -735,6 +735,73 @@ function PlayerChallengeRoute() {
 							))}
 						</div>
 					</GlassCard>
+				) : challenge.status === "scoring" ? (
+					<>
+						<InlineNotice tone="warning">
+							Predictions are locked. Your picks are shown below as read-only.
+						</InlineNotice>
+
+						<div className="mb-8 grid gap-4">
+							{orderedQuestions.map((question, questionIndex) => (
+								<fieldset
+									key={question._id}
+									className="border-border bg-secondary/30 rounded-xl border p-4"
+								>
+									<legend className="w-full">
+										<div className="flex items-start justify-between gap-3">
+											<div className="flex items-start gap-3">
+												<span className="text-muted-foreground mt-0.5 text-xs font-bold tracking-widest">
+													Q{questionIndex + 1}
+												</span>
+												<h2 className="text-foreground text-lg leading-7 font-semibold">
+													{question.text}
+												</h2>
+											</div>
+											<Lock className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
+										</div>
+									</legend>
+									<div className="mt-4 grid gap-3">
+										{question.options.map((option, optionIndex) => (
+											<OptionButton
+												key={option}
+												locked
+												role="radio"
+												aria-checked={
+													selections[question._id.toString()] === optionIndex
+												}
+												aria-readonly="true"
+												selected={
+													selections[question._id.toString()] === optionIndex
+												}
+											>
+												<span className="flex items-center gap-2">
+													{selections[question._id.toString()] ===
+													optionIndex ? (
+														<Check className="h-4 w-4" />
+													) : null}
+													<span className="text-muted-foreground mr-1 font-mono text-xs">
+														{optionLabel(optionIndex)}.
+													</span>
+													{option}
+												</span>
+											</OptionButton>
+										))}
+									</div>
+								</fieldset>
+							))}
+						</div>
+
+						<Button asChild>
+							<Link
+								to="/prediction/c/$challengeId/leaderboard"
+								params={{ challengeId }}
+								className="no-underline"
+							>
+								Open leaderboard
+								<ArrowRight className="h-4 w-4" />
+							</Link>
+						</Button>
+					</>
 				) : (
 					<>
 						<InlineNotice tone="success">
@@ -827,7 +894,7 @@ function PlayerChallengeRoute() {
 				)}
 			</PageShell>
 
-			{participant && !hasSubmitted ? (
+			{participant && !hasSubmitted && challenge.status !== "scoring" ? (
 				<div
 					className="fixed inset-x-0 bottom-0 z-40 px-4"
 					style={{
