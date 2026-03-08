@@ -227,12 +227,12 @@ function HomeRoute() {
 									{sport}
 								</p>
 								<p className="mb-4 text-5xl">{getSportEmoji(sport)}</p>
+								</div>
+								<p className="text-sm leading-relaxed font-medium text-zinc-400">
+									Polished pick flow in minutes.
+								</p>
 							</div>
-							<p className="text-sm leading-relaxed font-medium text-zinc-400">
-								Polished pick flow in minutes. Readable on a 375px screen.
-							</p>
-						</div>
-					))}
+						))}
 				</div>
 			</div>
 		</PageShell>
