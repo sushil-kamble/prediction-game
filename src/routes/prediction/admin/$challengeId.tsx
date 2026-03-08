@@ -460,6 +460,7 @@ function AdminChallengeRoute() {
 		setQuestionText(question.text);
 		setOptions(question.options);
 		setPointValue(question.pointValue);
+		window.scrollTo({ top: 0, behavior: "smooth" });
 	}
 
 	function resetForm() {
