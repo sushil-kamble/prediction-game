@@ -717,7 +717,7 @@ export function ParticipantAnswerReview({
 														title="Your pick"
 														className="rounded-none border-zinc-600 bg-zinc-900 p-1.5 text-zinc-100"
 													>
-														<Eye className="h-3.5 w-3.5" />
+														<Check className="h-3.5 w-3.5" />
 													</Badge>
 												) : null}
 												{option.isCorrect ? (
