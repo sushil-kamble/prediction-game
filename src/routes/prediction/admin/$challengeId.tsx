@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
@@ -140,6 +140,10 @@ function AdminChallengeRoute() {
 	const [isUnlocking, setIsUnlocking] = useState(false);
 	const [isLockConfirmOpen, setIsLockConfirmOpen] = useState(false);
 	const [isUnlockConfirmOpen, setIsUnlockConfirmOpen] = useState(false);
+	const questionInputRef = useRef<HTMLTextAreaElement | null>(null);
+	const optionInputRefs = useRef<Array<HTMLInputElement | null>>([]);
+	const addOptionButtonRef = useRef<HTMLButtonElement | null>(null);
+	const decreasePointsButtonRef = useRef<HTMLButtonElement | null>(null);
 
 	const challenge = useQuery(
 		api.challenges.getAdminChallenge,
@@ -158,6 +162,10 @@ function AdminChallengeRoute() {
 	useEffect(() => {
 		setAdminSecret(getStoredAdminChallenge(challengeId)?.adminSecret ?? null);
 	}, [challengeId]);
+
+	useEffect(() => {
+		optionInputRefs.current = optionInputRefs.current.slice(0, options.length);
+	}, [options.length]);
 
 	useEffect(() => {
 		if (
@@ -202,6 +210,123 @@ function AdminChallengeRoute() {
 		options.length === 2 &&
 		options.every((option) => option.trim().length === 0) &&
 		pointValue === 1;
+
+	const getEnabledOptionInputs = () =>
+		optionInputRefs.current.filter(
+			(input): input is HTMLInputElement => Boolean(input && !input.disabled)
+		);
+
+	const focusQuestionComposerField = (field: HTMLElement | null) => {
+		if (!field) {
+			return;
+		}
+
+		requestAnimationFrame(() => field.focus());
+	};
+
+	const handleQuestionInputTab = (
+		event: KeyboardEvent<HTMLTextAreaElement>
+	) => {
+		if (
+			event.key !== "Tab" ||
+			event.shiftKey ||
+			event.altKey ||
+			event.ctrlKey ||
+			event.metaKey
+		) {
+			return;
+		}
+
+		const firstOptionInput = getEnabledOptionInputs()[0];
+		if (!firstOptionInput) {
+			return;
+		}
+
+		event.preventDefault();
+		focusQuestionComposerField(firstOptionInput);
+	};
+
+	const handleOptionInputTab = (
+		event: KeyboardEvent<HTMLInputElement>,
+		optionIndex: number
+	) => {
+		if (
+			event.key !== "Tab" ||
+			event.altKey ||
+			event.ctrlKey ||
+			event.metaKey
+		) {
+			return;
+		}
+
+		const enabledOptionInputs = getEnabledOptionInputs();
+		const currentInput = optionInputRefs.current[optionIndex];
+		const currentPosition = currentInput
+			? enabledOptionInputs.indexOf(currentInput)
+			: -1;
+
+		if (currentPosition === -1) {
+			return;
+		}
+
+		event.preventDefault();
+
+		if (event.shiftKey) {
+			focusQuestionComposerField(
+				currentPosition === 0
+					? questionInputRef.current
+					: enabledOptionInputs[currentPosition - 1]
+			);
+			return;
+		}
+
+		focusQuestionComposerField(
+			enabledOptionInputs[currentPosition + 1] ??
+				addOptionButtonRef.current ??
+				decreasePointsButtonRef.current
+		);
+	};
+
+	const handleAddOptionButtonTab = (
+		event: KeyboardEvent<HTMLButtonElement>
+	) => {
+		if (
+			event.key !== "Tab" ||
+			!event.shiftKey ||
+			event.altKey ||
+			event.ctrlKey ||
+			event.metaKey
+		) {
+			return;
+		}
+
+		const lastOptionInput = getEnabledOptionInputs().at(-1);
+		if (!lastOptionInput) {
+			return;
+		}
+
+		event.preventDefault();
+		focusQuestionComposerField(lastOptionInput);
+	};
+
+	const handleDecreasePointsButtonTab = (
+		event: KeyboardEvent<HTMLButtonElement>
+	) => {
+		if (
+			event.key !== "Tab" ||
+			!event.shiftKey ||
+			event.altKey ||
+			event.ctrlKey ||
+			event.metaKey
+		) {
+			return;
+		}
+
+		event.preventDefault();
+		focusQuestionComposerField(
+			addOptionButtonRef.current ?? getEnabledOptionInputs().at(-1) ?? null
+		);
+	};
 
 	if (adminSecret === undefined) {
 		return <AdminChallengeSkeleton />;
@@ -600,8 +725,10 @@ function AdminChallengeRoute() {
 										Question
 									</span>
 									<Textarea
+										ref={questionInputRef}
 										value={questionText}
 										onChange={(event) => setQuestionText(event.target.value)}
+										onKeyDown={handleQuestionInputTab}
 										placeholder="Who scores first?"
 										disabled={!isQuestionEditUnlocked}
 									/>
@@ -615,9 +742,11 @@ function AdminChallengeRoute() {
 										{options.length < 5 ? (
 											<button
 												type="button"
+												ref={addOptionButtonRef}
 												onClick={() =>
 													setOptions((current) => [...current, ""])
 												}
+												onKeyDown={handleAddOptionButtonTab}
 												disabled={!isQuestionEditUnlocked}
 												className="focus-visible:ring-primary/40 bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 hover:text-primary flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-bold tracking-widest uppercase transition-colors outline-none focus-visible:ring-4 disabled:opacity-40"
 												aria-label="Add another option"
@@ -634,6 +763,9 @@ function AdminChallengeRoute() {
 												{optionLabel(index)}
 											</span>
 											<Input
+												ref={(node) => {
+													optionInputRefs.current[index] = node;
+												}}
 												value={option}
 												onChange={(event) =>
 													setOptions((current) =>
@@ -643,6 +775,9 @@ function AdminChallengeRoute() {
 													)
 												}
 												placeholder={`Option ${optionLabel(index)}`}
+												onKeyDown={(event) =>
+													handleOptionInputTab(event, index)
+												}
 												disabled={!isQuestionEditUnlocked}
 												className="flex-1"
 											/>
@@ -677,9 +812,11 @@ function AdminChallengeRoute() {
 									<div className="flex items-center">
 										<button
 											type="button"
+											ref={decreasePointsButtonRef}
 											onClick={() =>
 												setPointValue((current) => Math.max(1, current - 1))
 											}
+											onKeyDown={handleDecreasePointsButtonTab}
 											disabled={!isQuestionEditUnlocked || pointValue <= 1}
 											className="focus-visible:ring-primary/40 hover:border-primary hover:text-primary flex h-10 w-10 items-center justify-center border-2 border-r-0 border-zinc-700 bg-black text-zinc-400 transition-colors outline-none focus-visible:ring-4 disabled:opacity-30"
 											aria-label="Decrease point value"
