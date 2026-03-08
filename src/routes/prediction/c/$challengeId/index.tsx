@@ -26,7 +26,7 @@ import {
 } from "#/components/app/results";
 import { useToast } from "#/components/app/use-toast";
 import { api } from "#/lib/api";
-import { optionLabel } from "#/lib/challenge";
+import { getPlayerChallengeBlocker, optionLabel } from "#/lib/challenge";
 import { fetchChallengePreview } from "#/lib/convex-server";
 import { useClientUUID } from "#/lib/use-client-uuid";
 import {
@@ -129,7 +129,7 @@ function handleRadioOptionKeyDown(
 	}
 }
 
-function PlayerChallengeRoute() {
+export function PlayerChallengeRoute() {
 	const { challengeId } = Route.useParams();
 	const uuid = useClientUUID();
 	const challenge = useQuery(api.challenges.getChallenge, { challengeId });
@@ -227,6 +227,12 @@ function PlayerChallengeRoute() {
 	const answeredCount = Object.keys(selections).length;
 	const isReadyToSubmit =
 		orderedQuestions.length > 0 && answeredCount === orderedQuestions.length;
+	const playerChallengeBlocker = challenge
+		? getPlayerChallengeBlocker({
+				status: challenge.status,
+				questionEditUnlocked: challenge.questionEditUnlocked,
+			})
+		: null;
 
 	if (
 		challenge === undefined ||
@@ -265,20 +271,11 @@ function PlayerChallengeRoute() {
 		);
 	}
 
-	if (challenge.status === "draft") {
+	if (playerChallengeBlocker) {
 		return (
 			<FullScreenState
-				title="This challenge isn't open yet"
-				description="Check back soon once the admin publishes the board."
-			/>
-		);
-	}
-
-	if (challenge.questionEditUnlocked) {
-		return (
-			<FullScreenState
-				title="Questions are unpublished"
-				description="The admin is updating this challenge right now. Please check back once the questions are republished."
+				title={playerChallengeBlocker.title}
+				description={playerChallengeBlocker.description}
 			/>
 		);
 	}

@@ -49,8 +49,11 @@ import {
 	answeredCorrectCount,
 	buildChallengeUrl,
 	buildLeaderboardUrl,
+	canUnpublishChallengeQuestions,
 	getAdminWorkflow,
+	getRuntimeCopy,
 	optionLabel,
+	toggleCorrectOptionIndex,
 } from "#/lib/challenge";
 import { getStoredAdminChallenge } from "#/lib/storage";
 
@@ -100,7 +103,7 @@ function handleRadioOptionKeyDown(
 	}
 }
 
-function AdminChallengeRoute() {
+export function AdminChallengeRoute() {
 	const { challengeId } = Route.useParams();
 	const addQuestion = useMutation(api.challenges.addQuestion);
 	const updateQuestion = useMutation(api.challenges.updateQuestion);
@@ -389,38 +392,20 @@ function AdminChallengeRoute() {
 		leaderboard.submittedParticipantCount > 0;
 	const canUnlockPredictions =
 		challenge.status === "scoring" && answeredCount === 0;
-	const canUnpublishQuestions =
-		challenge.status === "open" &&
-		submittedCount === 0 &&
-		!isQuestionEditUnlocked;
-	const runtimeTitle =
-		challenge.status === "draft"
-			? "Publishing will freeze the question set"
-			: challenge.status === "open" && isQuestionEditUnlocked
-				? "Questions are unpublished"
-				: challenge.status === "open"
-					? "The challenge is live"
-					: challenge.status === "scoring"
-						? "Submissions are locked"
-						: "The challenge is finalized";
-	const runtimeDescription =
-		challenge.status === "draft"
-			? questionCount === 0
-				? "Add at least one question before publishing. Once published, the current question set is frozen for players."
-				: "The current question set is ready. Publishing will open the player link and freeze these questions for prediction."
-			: challenge.status === "open" && isQuestionEditUnlocked
-				? "Players cannot view or answer these questions right now. Republish when the updated question set is ready to go live again."
-				: challenge.status === "open"
-					? "Players can join and submit predictions. Answer marking stays hidden until you lock submissions."
-					: challenge.status === "scoring"
-						? allQuestionsScored
-							? "Every question is scored. If players submitted picks, you can finish by announcing winners."
-							: "No new submissions are allowed. Mark each answer below to complete the board."
-						: challenge.winnersAnnouncedAt
-							? `Winners were announced on ${formatTimestamp(
-									challenge.winnersAnnouncedAt
-								)}.`
-							: "This challenge is closed.";
+	const canUnpublishQuestions = canUnpublishChallengeQuestions({
+		status: challenge.status,
+		submittedCount,
+		questionEditUnlocked: isQuestionEditUnlocked,
+	});
+	const { title: runtimeTitle, description: runtimeDescription } =
+		getRuntimeCopy({
+			status: challenge.status,
+			isQuestionEditUnlocked,
+			questionCount,
+			allQuestionsScored,
+			winnersAnnouncedAt: challenge.winnersAnnouncedAt ?? null,
+			formatTs: formatTimestamp,
+		});
 
 	function scrollToSection(section: HTMLElement | null) {
 		section?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -641,8 +626,10 @@ function AdminChallengeRoute() {
 				challengeId,
 				questionId: questionIdToScore,
 				adminSecret,
-				correctOptionIndex:
-					currentOptionIndex === optionIndex ? null : optionIndex,
+				correctOptionIndex: toggleCorrectOptionIndex(
+					currentOptionIndex,
+					optionIndex
+				),
 			});
 		} catch (error) {
 			showToast(getErrorMessage(error), "error");
@@ -736,22 +723,19 @@ function AdminChallengeRoute() {
 		setIsClearFormConfirmOpen(false);
 	}
 
-	const workflowActionBusy =
-		workflow?.primaryAction?.type === "publish"
-			? isPublishing
-			: workflow?.primaryAction?.type === "lock-predictions"
-				? isLocking
-				: workflow?.primaryAction?.type === "announce-winners"
-					? isAnnouncing
-					: false;
-	const workflowActionLabel =
-		workflow?.primaryAction?.type === "publish" && isPublishing
-			? "Publishing..."
-			: workflow?.primaryAction?.type === "lock-predictions" && isLocking
-				? "Locking..."
-				: workflow?.primaryAction?.type === "announce-winners" && isAnnouncing
-					? "Announcing..."
-					: workflow?.primaryAction?.label;
+	const actionLoadingStates: Record<string, { busy: boolean; label: string }> =
+		{
+			publish: { busy: isPublishing, label: "Publishing..." },
+			"lock-predictions": { busy: isLocking, label: "Locking..." },
+			"announce-winners": { busy: isAnnouncing, label: "Announcing..." },
+		};
+	const actionState = workflow?.primaryAction?.type
+		? actionLoadingStates[workflow.primaryAction.type]
+		: undefined;
+	const workflowActionBusy = actionState?.busy ?? false;
+	const workflowActionLabel = actionState?.busy
+		? actionState.label
+		: workflow?.primaryAction?.label;
 
 	return (
 		<>
@@ -1596,24 +1580,31 @@ function WorkflowStepCard({
 	description: string;
 	state: AdminWorkflowStepState;
 }) {
-	const stateClassName =
-		state === "complete"
-			? "border-emerald-400/50 bg-emerald-400/10"
-			: state === "current"
-				? "border-primary bg-primary/10"
-				: "border-zinc-800 bg-black/50";
-	const badgeClassName =
-		state === "complete"
-			? "border-emerald-400 text-emerald-400"
-			: state === "current"
-				? "border-primary text-primary"
-				: "border-zinc-700 text-zinc-500";
-	const stateLabel =
-		state === "complete"
-			? "Complete"
-			: state === "current"
-				? "Current"
-				: "Upcoming";
+	const stepStyles: Record<
+		AdminWorkflowStepState,
+		{ card: string; badge: string; label: string }
+	> = {
+		complete: {
+			card: "border-emerald-400/50 bg-emerald-400/10",
+			badge: "border-emerald-400 text-emerald-400",
+			label: "Complete",
+		},
+		current: {
+			card: "border-primary bg-primary/10",
+			badge: "border-primary text-primary",
+			label: "Current",
+		},
+		upcoming: {
+			card: "border-zinc-800 bg-black/50",
+			badge: "border-zinc-700 text-zinc-500",
+			label: "Upcoming",
+		},
+	};
+	const {
+		card: stateClassName,
+		badge: badgeClassName,
+		label: stateLabel,
+	} = stepStyles[state];
 
 	return (
 		<div className={`rounded-xl border p-4 ${stateClassName}`}>

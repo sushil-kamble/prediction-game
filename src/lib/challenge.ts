@@ -37,6 +37,11 @@ export type AdminWorkflowModel = {
 	steps: AdminWorkflowStep[];
 };
 
+export type PlayerChallengeBlocker = {
+	title: string;
+	description: string;
+} | null;
+
 export const SPORT_SUGGESTIONS = [
 	"Cricket",
 	"Football",
@@ -240,16 +245,6 @@ export function getAdminWorkflow({
 		primaryAction = null;
 	} else if (questionCount === 0) {
 		currentStep = "questions";
-	} else if (!questionsPublished) {
-		currentStep = "publish";
-		eyebrow = "Questions unlocked";
-		title = "Republish the question set";
-		description =
-			"Questions are editable again. Publish to freeze this version before players continue or scoring resumes.";
-		primaryAction = {
-			type: "publish",
-			label: "Publish questions",
-		};
 	} else if (status === "draft") {
 		currentStep = "publish";
 		eyebrow = "Ready to go live";
@@ -259,6 +254,16 @@ export function getAdminWorkflow({
 		primaryAction = {
 			type: "publish",
 			label: "Publish challenge",
+		};
+	} else if (!questionsPublished) {
+		currentStep = "publish";
+		eyebrow = "Questions unlocked";
+		title = "Republish the question set";
+		description =
+			"Questions are editable again. Publish to freeze this version before players continue or scoring resumes.";
+		primaryAction = {
+			type: "publish",
+			label: "Publish questions",
 		};
 	} else if (status === "open") {
 		currentStep = "collect";
@@ -315,4 +320,106 @@ export function getAdminWorkflow({
 		primaryAction,
 		steps,
 	};
+}
+
+export function getPlayerChallengeBlocker({
+	status,
+	questionEditUnlocked,
+}: {
+	status: ChallengeStatus;
+	questionEditUnlocked: boolean;
+}): PlayerChallengeBlocker {
+	if (status === "draft") {
+		return {
+			title: "This challenge isn't open yet",
+			description: "Check back soon once the admin publishes the board.",
+		};
+	}
+
+	if (questionEditUnlocked) {
+		return {
+			title: "Questions are unpublished",
+			description:
+				"The admin is updating this challenge right now. Please check back once the questions are republished.",
+		};
+	}
+
+	return null;
+}
+
+export function getRuntimeCopy({
+	status,
+	isQuestionEditUnlocked,
+	questionCount,
+	allQuestionsScored,
+	winnersAnnouncedAt,
+	formatTs,
+}: {
+	status: ChallengeStatus;
+	isQuestionEditUnlocked: boolean;
+	questionCount: number;
+	allQuestionsScored: boolean;
+	winnersAnnouncedAt: number | null | undefined;
+	formatTs: (timestamp: number) => string;
+}): { title: string; description: string } {
+	if (status === "draft") {
+		return {
+			title: "Publishing will freeze the question set",
+			description:
+				questionCount === 0
+					? "Add at least one question before publishing. Once published, the current question set is frozen for players."
+					: "The current question set is ready. Publishing will open the player link and freeze these questions for prediction.",
+		};
+	}
+
+	if (status === "open" && isQuestionEditUnlocked) {
+		return {
+			title: "Questions are unpublished",
+			description:
+				"Players cannot view or answer these questions right now. Republish when the updated question set is ready to go live again.",
+		};
+	}
+
+	if (status === "open") {
+		return {
+			title: "The challenge is live",
+			description:
+				"Players can join and submit predictions. Answer marking stays hidden until you lock submissions.",
+		};
+	}
+
+	if (status === "scoring") {
+		return {
+			title: "Submissions are locked",
+			description: allQuestionsScored
+				? "Every question is scored. If players submitted picks, you can finish by announcing winners."
+				: "No new submissions are allowed. Mark each answer below to complete the board.",
+		};
+	}
+
+	return {
+		title: "The challenge is finalized",
+		description: winnersAnnouncedAt
+			? `Winners were announced on ${formatTs(winnersAnnouncedAt)}.`
+			: "This challenge is closed.",
+	};
+}
+
+export function canUnpublishChallengeQuestions({
+	status,
+	submittedCount,
+	questionEditUnlocked,
+}: {
+	status: ChallengeStatus;
+	submittedCount: number;
+	questionEditUnlocked: boolean;
+}) {
+	return status === "open" && submittedCount === 0 && !questionEditUnlocked;
+}
+
+export function toggleCorrectOptionIndex(
+	currentOptionIndex: number | null,
+	nextOptionIndex: number
+) {
+	return currentOptionIndex === nextOptionIndex ? null : nextOptionIndex;
 }
