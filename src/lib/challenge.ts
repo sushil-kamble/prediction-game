@@ -32,7 +32,9 @@ export function getStatusLabel(status: ChallengeStatus) {
 
 export function getSportEmoji(sport: string) {
 	const normalized = sport.trim().toLowerCase();
-	return SPORT_EMOJIS.find(([needle]) => normalized.includes(needle))?.[1] ?? "🔥";
+	return (
+		SPORT_EMOJIS.find(([needle]) => normalized.includes(needle))?.[1] ?? "🔥"
+	);
 }
 
 export function buildChallengeUrl(origin: string, challengeId: string) {
@@ -44,13 +46,19 @@ export function buildLeaderboardUrl(origin: string, challengeId: string) {
 }
 
 export function answeredCorrectCount(
-	questions: Array<{ correctOptionIndex?: number | null }>,
+	questions: Array<{ correctOptionIndex?: number | null }>
 ) {
-	return questions.filter((question) => question.correctOptionIndex !== null).length;
+	return questions.filter((question) => question.correctOptionIndex !== null)
+		.length;
 }
 
 export function clampOptionCount(options: string[]) {
 	return options.slice(0, 5);
+}
+
+/** Map a zero-based option index to a letter label: 0 → "A", 1 → "B", … */
+export function optionLabel(index: number) {
+	return String.fromCharCode(65 + index);
 }
 
 export function formatSportDescription(sport: string) {

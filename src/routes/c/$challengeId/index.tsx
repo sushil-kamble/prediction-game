@@ -25,6 +25,7 @@ import {
 } from "#/components/app/results";
 import { useToast } from "#/components/app/use-toast";
 import { api } from "#/lib/api";
+import { optionLabel } from "#/lib/challenge";
 import { fetchChallengePreview } from "#/lib/convex-server";
 import { useClientUUID } from "#/lib/use-client-uuid";
 import {
@@ -91,7 +92,7 @@ function handleRadioOptionKeyDown(
 	event: KeyboardEvent<HTMLButtonElement>,
 	currentIndex: number,
 	totalOptions: number,
-	onSelect: (nextIndex: number) => void,
+	onSelect: (nextIndex: number) => void
 ) {
 	switch (event.key) {
 		case "ArrowDown":
@@ -132,7 +133,7 @@ function PlayerChallengeRoute() {
 	);
 	const joinChallenge = useMutation(api.challenges.joinChallenge);
 	const recoverParticipantByUsername = useMutation(
-		api.challenges.recoverParticipantByUsername,
+		api.challenges.recoverParticipantByUsername
 	);
 	const submitPredictions = useMutation(api.challenges.submitPredictions);
 	const { showToast } = useToast();
@@ -149,9 +150,7 @@ function PlayerChallengeRoute() {
 		participant?._id.toString() ?? storedParticipantId ?? null;
 	const participantPredictions = useQuery(
 		api.challenges.getParticipantPredictions,
-		participantId && uuid
-			? { challengeId, participantId, uuid }
-			: "skip"
+		participantId && uuid ? { challengeId, participantId, uuid } : "skip"
 	);
 
 	const [nickname, setNickname] = useState("");
@@ -256,17 +255,17 @@ function PlayerChallengeRoute() {
 	}
 
 	if (challenge.status === "closed") {
-			if (!leaderboard) {
-				return (
-					<FullScreenState
-						title="Leaderboard unavailable"
-						description="This challenge couldn't load the latest standings."
-					/>
-				);
-			}
+		if (!leaderboard) {
+			return (
+				<FullScreenState
+					title="Leaderboard unavailable"
+					description="This challenge couldn't load the latest standings."
+				/>
+			);
+		}
 
-			if (challenge.winnersAnnouncedAt) {
-				if (leaderboard?.currentParticipant) {
+		if (challenge.winnersAnnouncedAt) {
+			if (leaderboard?.currentParticipant) {
 				return (
 					<PageShell className="gap-6 pt-0 pb-8">
 						<PlayerHeader
@@ -394,7 +393,9 @@ function PlayerChallengeRoute() {
 			setJoinErrors(nextErrors);
 			focusField(nextErrors.nickname ? "player-nickname" : "player-username");
 			showToast(
-				nextErrors.nickname ?? nextErrors.username ?? "Check the highlighted fields.",
+				nextErrors.nickname ??
+					nextErrors.username ??
+					"Check the highlighted fields.",
 				"error"
 			);
 			return;
@@ -436,7 +437,10 @@ function PlayerChallengeRoute() {
 			return;
 		}
 		if (!uuid) {
-			showToast("Couldn't initialize this device. Refresh and try again.", "error");
+			showToast(
+				"Couldn't initialize this device. Refresh and try again.",
+				"error"
+			);
 			return;
 		}
 
@@ -573,7 +577,8 @@ function PlayerChallengeRoute() {
 							</label>
 							<label className="flex flex-col gap-2">
 								<span className="text-foreground text-sm font-semibold">
-									Private username <span className="text-zinc-400">(optional)</span>
+									Private username{" "}
+									<span className="text-zinc-400">(optional)</span>
 								</span>
 								<Input
 									id="player-username"
@@ -605,8 +610,8 @@ function PlayerChallengeRoute() {
 									</p>
 								) : null}
 								<p className="text-sm leading-6 text-zinc-400">
-									This never appears on the leaderboard. Use it only if you want to
-									recover this same entry on another device later.
+									This never appears on the leaderboard. Use it only if you want
+									to recover this same entry on another device later.
 								</p>
 							</label>
 							<Button type="submit" className="w-full" disabled={isJoining}>
@@ -619,7 +624,8 @@ function PlayerChallengeRoute() {
 								Already joined from another device?
 							</p>
 							<p className="mt-2 text-sm leading-6 text-zinc-400">
-								Use your private username to reconnect this device to your picks.
+								Use your private username to reconnect this device to your
+								picks.
 							</p>
 							<form
 								className="mt-4 flex flex-col gap-3 sm:flex-row"
@@ -644,11 +650,7 @@ function PlayerChallengeRoute() {
 										recoveryError ? "player-recovery-error" : undefined
 									}
 								/>
-								<Button
-									type="submit"
-									variant="outline"
-									disabled={isRecovering}
-								>
+								<Button type="submit" variant="outline" disabled={isRecovering}>
 									{isRecovering ? "Checking..." : "Recover my entry"}
 								</Button>
 							</form>
@@ -721,6 +723,9 @@ function PlayerChallengeRoute() {
 													optionIndex ? (
 														<Check className="h-4 w-4" />
 													) : null}
+													<span className="text-muted-foreground mr-1 font-mono text-xs">
+														{optionLabel(optionIndex)}.
+													</span>
 													{option}
 												</span>
 											</OptionButton>
@@ -749,7 +754,10 @@ function PlayerChallengeRoute() {
 										role="radiogroup"
 										aria-labelledby={`question-legend-${question._id}`}
 									>
-										<legend id={`question-legend-${question._id}`} className="w-full">
+										<legend
+											id={`question-legend-${question._id}`}
+											className="w-full"
+										>
 											<div className="flex items-start justify-between gap-3">
 												<div className="flex items-start gap-3">
 													<span className="text-muted-foreground mt-0.5 text-xs font-bold tracking-widest">
@@ -775,8 +783,8 @@ function PlayerChallengeRoute() {
 														selections[question._id.toString()] === optionIndex
 													}
 													tabIndex={
-														selections[question._id.toString()] === optionIndex ||
-														optionIndex === 0
+														selections[question._id.toString()] ===
+															optionIndex || optionIndex === 0
 															? 0
 															: -1
 													}
@@ -795,14 +803,19 @@ function PlayerChallengeRoute() {
 																updateSelection(
 																	question._id.toString(),
 																	nextIndex
-																),
+																)
 														)
 													}
 													selected={
 														selections[question._id.toString()] === optionIndex
 													}
 												>
-													{option}
+													<span className="flex items-center gap-2">
+														<span className="text-muted-foreground mr-1 font-mono text-xs">
+															{optionLabel(optionIndex)}.
+														</span>
+														{option}
+													</span>
 												</OptionButton>
 											))}
 										</div>

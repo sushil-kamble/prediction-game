@@ -46,6 +46,7 @@ import {
 	answeredCorrectCount,
 	buildChallengeUrl,
 	buildLeaderboardUrl,
+	optionLabel,
 } from "#/lib/challenge";
 import { getStoredAdminChallenge } from "#/lib/storage";
 
@@ -69,7 +70,7 @@ function handleRadioOptionKeyDown(
 	event: KeyboardEvent<HTMLButtonElement>,
 	currentIndex: number,
 	totalOptions: number,
-	onSelect: (nextIndex: number) => void,
+	onSelect: (nextIndex: number) => void
 ) {
 	switch (event.key) {
 		case "ArrowDown":
@@ -564,11 +565,11 @@ function AdminChallengeRoute() {
 													setOptions((current) => [...current, ""])
 												}
 												disabled={!isQuestionEditUnlocked}
-												className="focus-visible:ring-primary/40 text-primary hover:text-primary/80 flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase transition-colors outline-none focus-visible:ring-4 disabled:opacity-40"
+												className="focus-visible:ring-primary/40 bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 hover:text-primary flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-bold tracking-widest uppercase transition-colors outline-none focus-visible:ring-4 disabled:opacity-40"
 												aria-label="Add another option"
 											>
-												<Plus className="h-3.5 w-3.5" />
-												Add
+												<Plus className="h-4 w-4" />
+												Add Option
 											</button>
 										) : null}
 									</div>
@@ -576,7 +577,7 @@ function AdminChallengeRoute() {
 									{options.map((option, index) => (
 										<div key={index} className="flex items-center gap-2">
 											<span className="text-muted-foreground w-5 shrink-0 text-center text-xs font-bold">
-												{index + 1}
+												{optionLabel(index)}
 											</span>
 											<Input
 												value={option}
@@ -587,7 +588,7 @@ function AdminChallengeRoute() {
 														)
 													)
 												}
-												placeholder={`Option ${index + 1}`}
+												placeholder={`Option ${optionLabel(index)}`}
 												disabled={!isQuestionEditUnlocked}
 												className="flex-1"
 											/>
@@ -606,7 +607,7 @@ function AdminChallengeRoute() {
 													!isQuestionEditUnlocked || options.length <= 2
 												}
 												className="focus-visible:ring-primary/40 hover:border-destructive hover:text-destructive flex h-10 w-10 shrink-0 items-center justify-center border-2 border-zinc-700 text-zinc-500 transition-colors outline-none focus-visible:ring-4 disabled:opacity-30"
-												aria-label={`Remove option ${index + 1}`}
+												aria-label={`Remove option ${optionLabel(index)}`}
 											>
 												<X className="h-4 w-4" />
 											</button>
@@ -907,7 +908,7 @@ function AdminChallengeRoute() {
 																handleMarkAnswer(
 																	question._id.toString(),
 																	nextIndex
-																),
+																)
 														)
 													}
 													correct={question.correctOptionIndex === optionIndex}
@@ -916,6 +917,9 @@ function AdminChallengeRoute() {
 														{question.correctOptionIndex === optionIndex ? (
 															<Check className="h-4 w-4" />
 														) : null}
+														<span className="text-muted-foreground mr-1 font-mono text-xs">
+															{optionLabel(optionIndex)}.
+														</span>
 														{option}
 													</span>
 												</OptionButton>
