@@ -92,7 +92,8 @@ function ToastItem({
 				"pointer-events-auto mx-auto flex w-full max-w-[28rem] animate-[rise-in_240ms_ease-out] items-start gap-3 rounded-xl border px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.4)] backdrop-blur-xl",
 				toneClasses[toast.tone]
 			)}
-			role="status"
+			role={toast.tone === "error" ? "alert" : "status"}
+			aria-live={toast.tone === "error" ? "assertive" : "polite"}
 		>
 			<p className="m-0 flex-1 text-sm leading-6 font-semibold">
 				{toast.message}

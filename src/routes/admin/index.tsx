@@ -28,6 +28,11 @@ type ChallengeSummary = {
 	createdAt: number;
 };
 
+type CreateChallengeErrors = {
+	title?: string;
+	sport?: string;
+};
+
 export const Route = createFileRoute("/admin/")({
 	head: () => ({
 		meta: [{ title: "Admin | PredictGame" }],
@@ -44,6 +49,7 @@ function AdminHomeRoute() {
 	const [isSheetOpen, setIsSheetOpen] = useState(false);
 	const [title, setTitle] = useState("");
 	const [sport, setSport] = useState("");
+	const [errors, setErrors] = useState<CreateChallengeErrors>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const challengeIds = storedChallenges.map((challenge) => challenge.challengeId);
@@ -76,17 +82,26 @@ function AdminHomeRoute() {
 
 		const trimmedTitle = title.trim();
 		const trimmedSport = sport.trim();
+		const nextErrors: CreateChallengeErrors = {};
 
 		if (!trimmedTitle) {
-			showToast("Challenge title is required.", "error");
-			return;
+			nextErrors.title = "Challenge title is required.";
 		}
 
 		if (!trimmedSport) {
-			showToast("Pick or type a sport before creating the challenge.", "error");
+			nextErrors.sport = "Pick or type a sport before creating the challenge.";
+		}
+
+		if (nextErrors.title || nextErrors.sport) {
+			setErrors(nextErrors);
+			showToast(
+				nextErrors.title ?? nextErrors.sport ?? "Check the highlighted fields.",
+				"error"
+			);
 			return;
 		}
 
+		setErrors({});
 		setIsSubmitting(true);
 		try {
 			const result = await createChallenge({
@@ -216,16 +231,35 @@ function AdminHomeRoute() {
 							CHALLENGE TITLE
 						</span>
 						<Input
+							id="admin-challenge-title"
 							value={title}
-							onChange={(event) => setTitle(event.target.value)}
+							onChange={(event) => {
+								setTitle(event.target.value);
+								setErrors((current) => ({ ...current, title: undefined }));
+							}}
 							placeholder="SUNDAY DERBY PREDICTIONS"
 							maxLength={80}
 							className="h-14 text-lg border-2 border-zinc-700 focus-visible:border-primary focus-visible:ring-0 rounded-none bg-zinc-950 placeholder:text-zinc-600"
+							aria-invalid={Boolean(errors.title)}
+							aria-describedby={
+								errors.title ? "admin-challenge-title-error" : undefined
+							}
 						/>
+						{errors.title ? (
+							<p
+								id="admin-challenge-title-error"
+								className="text-sm leading-6 text-rose-300"
+							>
+								{errors.title}
+							</p>
+						) : null}
 					</label>
 
 					<div className="flex flex-col gap-3">
-						<label className="text-sm font-bold text-white uppercase tracking-wider">
+						<label
+							htmlFor="admin-challenge-sport"
+							className="text-sm font-bold text-white uppercase tracking-wider"
+						>
 							SPORT
 						</label>
 						<div className="flex flex-wrap gap-3 mb-2">
@@ -241,8 +275,12 @@ function AdminHomeRoute() {
 									<button
 										key={suggestion}
 										type="button"
-										onClick={() => setSport(suggestion === "Other" ? "" : suggestion)}
-										className={`inline-flex min-h-12 items-center border-2 px-5 text-sm font-bold uppercase tracking-wide transition-colors ${
+										onClick={() => {
+											setSport(suggestion === "Other" ? "" : suggestion);
+											setErrors((current) => ({ ...current, sport: undefined }));
+										}}
+										aria-pressed={isSelected}
+										className={`focus-visible:ring-primary/40 inline-flex min-h-12 items-center border-2 px-5 text-sm font-bold uppercase tracking-wide transition-colors outline-none focus-visible:ring-4 ${
 											isSelected
 												? "border-primary bg-primary text-black"
 												: "border-zinc-800 bg-zinc-950 text-zinc-400 hover:border-primary hover:text-white"
@@ -254,12 +292,28 @@ function AdminHomeRoute() {
 							})}
 						</div>
 						<Input
+							id="admin-challenge-sport"
 							value={sport}
-							onChange={(event) => setSport(event.target.value)}
+							onChange={(event) => {
+								setSport(event.target.value);
+								setErrors((current) => ({ ...current, sport: undefined }));
+							}}
 							placeholder="CRICKET"
 							maxLength={32}
 							className="h-14 text-lg border-2 border-zinc-700 focus-visible:border-primary focus-visible:ring-0 rounded-none bg-zinc-950 placeholder:text-zinc-600"
+							aria-invalid={Boolean(errors.sport)}
+							aria-describedby={
+								errors.sport ? "admin-challenge-sport-error" : undefined
+							}
 						/>
+						{errors.sport ? (
+							<p
+								id="admin-challenge-sport-error"
+								className="text-sm leading-6 text-rose-300"
+							>
+								{errors.sport}
+							</p>
+						) : null}
 					</div>
 
 					<div className="flex flex-col gap-4 mt-4">

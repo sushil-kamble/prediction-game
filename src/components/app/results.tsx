@@ -15,7 +15,7 @@ type PodiumEntry = {
 	correctCount: number;
 	totalAnswered: number;
 	accuracy: number | null;
-	uuid: string | null;
+	isCurrentPlayer: boolean;
 };
 
 type CurrentParticipantSummary = {
@@ -271,13 +271,11 @@ function HeroStat({
 
 export function PodiumSection({
 	podium,
-	currentPlayerUuid,
 	winnersAnnounced,
 	title,
 	elevateGold = true,
 }: {
 	podium: PodiumEntry[];
-	currentPlayerUuid: string | null;
 	winnersAnnounced: boolean;
 	title?: string;
 	elevateGold?: boolean;
@@ -310,9 +308,7 @@ export function PodiumSection({
 					<PodiumCard
 						key={`${entry.medal}-${entry.nickname}-${entry.rank}`}
 						entry={entry}
-						isCurrentPlayer={
-							currentPlayerUuid !== null && entry.uuid === currentPlayerUuid
-						}
+						isCurrentPlayer={entry.isCurrentPlayer}
 						index={index}
 						elevateGold={elevateGold}
 					/>
@@ -458,7 +454,13 @@ export function ResultsRecoveryCard({
 			<p className="mt-4 max-w-2xl text-base leading-7 text-zinc-400">
 				{description}
 			</p>
-			<div className="mt-6 flex flex-col gap-4">
+			<form
+				className="mt-6 flex flex-col gap-4"
+				onSubmit={(event) => {
+					event.preventDefault();
+					onSubmit();
+				}}
+			>
 				<label className="flex flex-col gap-2">
 					<span className="text-muted-foreground text-xs font-bold tracking-widest uppercase">
 						Username
@@ -474,15 +476,15 @@ export function ResultsRecoveryCard({
 				</label>
 				<div className="flex flex-col gap-3 sm:flex-row">
 					<Button
+						type="submit"
 						className="sm:flex-1"
-						onClick={onSubmit}
 						disabled={isSubmitting}
 					>
 						{isSubmitting ? "Checking..." : "Show my result"}
 					</Button>
 					{showLeaderboardAction}
 				</div>
-			</div>
+			</form>
 		</GlassCard>
 	);
 }

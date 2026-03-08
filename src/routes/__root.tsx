@@ -22,8 +22,7 @@ export const Route = createRootRoute({
 			},
 			{
 				name: "viewport",
-				content:
-					"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover",
+				content: "width=device-width, initial-scale=1, viewport-fit=cover",
 			},
 			{
 				title: "PredictGame",
@@ -62,27 +61,37 @@ function RootComponent() {
 }
 
 function RootDocument({ children }: { children: ReactNode }) {
+	const showDevtools = import.meta.env.DEV;
+
 	return (
 		<html lang="en">
 			<head>
 				<HeadContent />
 			</head>
 			<body className="selection:bg-primary/30 selection:text-primary-foreground font-sans antialiased">
+				<a
+					href="#main-content"
+					className="bg-primary text-primary-foreground sr-only fixed top-4 left-4 z-[110] px-4 py-2 font-bold uppercase focus:not-sr-only"
+				>
+					Skip to content
+				</a>
 				<ConvexProvider>
 					<ToastProvider>
 						<ReconnectingBanner />
 						{children}
-						<TanStackDevtools
-							config={{
-								position: "bottom-right",
-							}}
-							plugins={[
-								{
-									name: "TanStack Router",
-									render: <TanStackRouterDevtoolsPanel />,
-								},
-							]}
-						/>
+						{showDevtools ? (
+							<TanStackDevtools
+								config={{
+									position: "bottom-right",
+								}}
+								plugins={[
+									{
+										name: "TanStack Router",
+										render: <TanStackRouterDevtoolsPanel />,
+									},
+								]}
+							/>
+						) : null}
 					</ToastProvider>
 				</ConvexProvider>
 				<Scripts />

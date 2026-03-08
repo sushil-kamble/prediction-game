@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, KeyboardEvent } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "convex/react";
@@ -42,6 +42,11 @@ type PublicQuestion = {
 	order: number;
 };
 
+type JoinFormErrors = {
+	nickname?: string;
+	username?: string;
+};
+
 const getChallengeMeta = createServerFn({ method: "GET" })
 	.inputValidator((input: { challengeId: string }) => input)
 	.handler(async ({ data }) => await fetchChallengePreview(data.challengeId));
@@ -71,14 +76,60 @@ export const Route = createFileRoute("/c/$challengeId/")({
 	component: PlayerChallengeRoute,
 });
 
+function focusField(fieldId: string) {
+	if (typeof document === "undefined") {
+		return;
+	}
+
+	const field = document.getElementById(fieldId);
+	if (field instanceof HTMLElement) {
+		field.focus();
+	}
+}
+
+function handleRadioOptionKeyDown(
+	event: KeyboardEvent<HTMLButtonElement>,
+	currentIndex: number,
+	totalOptions: number,
+	onSelect: (nextIndex: number) => void,
+) {
+	switch (event.key) {
+		case "ArrowDown":
+		case "ArrowRight":
+			event.preventDefault();
+			onSelect((currentIndex + 1) % totalOptions);
+			return;
+		case "ArrowUp":
+		case "ArrowLeft":
+			event.preventDefault();
+			onSelect((currentIndex - 1 + totalOptions) % totalOptions);
+			return;
+		case "Home":
+			event.preventDefault();
+			onSelect(0);
+			return;
+		case "End":
+			event.preventDefault();
+			onSelect(totalOptions - 1);
+			return;
+		default:
+			return;
+	}
+}
+
 function PlayerChallengeRoute() {
 	const { challengeId } = Route.useParams();
 	const uuid = useClientUUID();
 	const challenge = useQuery(api.challenges.getChallenge, { challengeId });
-	const leaderboard = useQuery(api.challenges.getLeaderboard, {
-		challengeId,
-		uuid: uuid ?? undefined,
-	});
+	const leaderboard = useQuery(
+		api.challenges.getLeaderboard,
+		challenge?.status === "closed"
+			? {
+					challengeId,
+					uuid: uuid ?? undefined,
+				}
+			: "skip"
+	);
 	const joinChallenge = useMutation(api.challenges.joinChallenge);
 	const recoverParticipantByUsername = useMutation(
 		api.challenges.recoverParticipantByUsername,
@@ -98,12 +149,16 @@ function PlayerChallengeRoute() {
 		participant?._id.toString() ?? storedParticipantId ?? null;
 	const participantPredictions = useQuery(
 		api.challenges.getParticipantPredictions,
-		participantId ? { challengeId, participantId } : "skip"
+		participantId && uuid
+			? { challengeId, participantId, uuid }
+			: "skip"
 	);
 
 	const [nickname, setNickname] = useState("");
 	const [username, setUsername] = useState("");
 	const [recoveryUsername, setRecoveryUsername] = useState("");
+	const [joinErrors, setJoinErrors] = useState<JoinFormErrors>({});
+	const [recoveryError, setRecoveryError] = useState<string | null>(null);
 	const [selections, setSelections] = useState<Record<string, number>>({});
 	const [isJoining, setIsJoining] = useState(false);
 	const [isRecovering, setIsRecovering] = useState(false);
@@ -159,10 +214,10 @@ function PlayerChallengeRoute() {
 
 	if (
 		challenge === undefined ||
-		leaderboard === undefined ||
 		uuid === null ||
 		storedParticipantId === undefined ||
-		(participantId !== null && participantPredictions === undefined)
+		(participantId !== null && participantPredictions === undefined) ||
+		(challenge?.status === "closed" && leaderboard === undefined)
 	) {
 		return <PlayerChallengeSkeleton />;
 	}
@@ -182,7 +237,7 @@ function PlayerChallengeRoute() {
 		);
 	}
 
-	if (leaderboard === null) {
+	if (challenge.status === "closed" && leaderboard === null) {
 		return (
 			<FullScreenState
 				title="Leaderboard unavailable"
@@ -201,8 +256,17 @@ function PlayerChallengeRoute() {
 	}
 
 	if (challenge.status === "closed") {
+			if (!leaderboard) {
+				return (
+					<FullScreenState
+						title="Leaderboard unavailable"
+						description="This challenge couldn't load the latest standings."
+					/>
+				);
+			}
+
 			if (challenge.winnersAnnouncedAt) {
-				if (leaderboard.currentParticipant) {
+				if (leaderboard?.currentParticipant) {
 				return (
 					<PageShell className="gap-6 pt-0 pb-8">
 						<PlayerHeader
@@ -219,7 +283,6 @@ function PlayerChallengeRoute() {
 						/>
 						<PodiumSection
 							podium={leaderboard.podium}
-							currentPlayerUuid={uuid}
 							winnersAnnounced={leaderboard.winnersAnnounced}
 							title="The final podium"
 						/>
@@ -265,7 +328,6 @@ function PlayerChallengeRoute() {
 					/>
 					<PodiumSection
 						podium={leaderboard.podium}
-						currentPlayerUuid={uuid}
 						winnersAnnounced={leaderboard.winnersAnnounced}
 						title="Final podium"
 					/>
@@ -291,17 +353,50 @@ function PlayerChallengeRoute() {
 		);
 	}
 
+	if (challenge.status === "scoring" && !hasSubmitted) {
+		return (
+			<FullScreenState
+				title="Predictions are locked"
+				description="Scoring has started, so new picks and changes are no longer allowed."
+			>
+				<Button asChild>
+					<Link
+						to="/c/$challengeId/leaderboard"
+						params={{ challengeId }}
+						className="no-underline"
+					>
+						Open leaderboard
+					</Link>
+				</Button>
+			</FullScreenState>
+		);
+	}
+
 	async function handleJoin(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 
 		const trimmedNickname = nickname.trim();
 		const trimmedUsername = username.trim();
+		const nextErrors: JoinFormErrors = {};
+
 		if (trimmedNickname.length < 2 || trimmedNickname.length > 20) {
-			showToast("Nickname must be between 2 and 20 characters.", "error");
-			return;
+			nextErrors.nickname = "Nickname must be between 2 and 20 characters.";
 		}
-		if (trimmedUsername && trimmedUsername.toLowerCase() === trimmedNickname.toLowerCase()) {
-			showToast("Username and nickname must be different.", "error");
+
+		if (
+			trimmedUsername &&
+			trimmedUsername.toLowerCase() === trimmedNickname.toLowerCase()
+		) {
+			nextErrors.username = "Username and nickname must be different.";
+		}
+
+		if (nextErrors.nickname || nextErrors.username) {
+			setJoinErrors(nextErrors);
+			focusField(nextErrors.nickname ? "player-nickname" : "player-username");
+			showToast(
+				nextErrors.nickname ?? nextErrors.username ?? "Check the highlighted fields.",
+				"error"
+			);
 			return;
 		}
 
@@ -313,6 +408,7 @@ function PlayerChallengeRoute() {
 			return;
 		}
 
+		setJoinErrors({});
 		setIsJoining(true);
 		try {
 			const nextParticipantId = await joinChallenge({
@@ -334,6 +430,8 @@ function PlayerChallengeRoute() {
 	async function handleRecoverParticipant() {
 		const trimmedUsername = recoveryUsername.trim();
 		if (!trimmedUsername) {
+			setRecoveryError("Enter the username you saved for this challenge.");
+			focusField("player-recovery-username");
 			showToast("Enter the username you saved for this challenge.", "error");
 			return;
 		}
@@ -342,6 +440,7 @@ function PlayerChallengeRoute() {
 			return;
 		}
 
+		setRecoveryError(null);
 		setIsRecovering(true);
 		try {
 			const result = await recoverParticipantByUsername({
@@ -391,12 +490,17 @@ function PlayerChallengeRoute() {
 			showToast("Join the challenge before submitting predictions.", "error");
 			return;
 		}
+		if (!uuid) {
+			showToast("Couldn't verify this device. Refresh and try again.", "error");
+			return;
+		}
 
 		setIsSubmitting(true);
 		try {
 			await submitPredictions({
 				challengeId,
 				participantId,
+				uuid,
 				predictions: orderedQuestions.map((question) => ({
 					questionId: question._id.toString(),
 					selectedOptionIndex: selections[question._id.toString()],
@@ -438,31 +542,69 @@ function PlayerChallengeRoute() {
 									Nickname
 								</span>
 								<Input
+									id="player-nickname"
 									value={nickname}
-									onChange={(event) => setNickname(event.target.value)}
+									onChange={(event) => {
+										setNickname(event.target.value);
+										setJoinErrors((current) => ({
+											...current,
+											nickname: undefined,
+										}));
+									}}
 									placeholder="Pick a name everyone will recognise"
 									maxLength={20}
 									autoComplete="nickname"
 									autoCapitalize="words"
 									enterKeyHint="go"
 									spellCheck={false}
+									aria-invalid={Boolean(joinErrors.nickname)}
+									aria-describedby={
+										joinErrors.nickname ? "player-nickname-error" : undefined
+									}
 								/>
+								{joinErrors.nickname ? (
+									<p
+										id="player-nickname-error"
+										className="text-sm leading-6 text-rose-300"
+									>
+										{joinErrors.nickname}
+									</p>
+								) : null}
 							</label>
 							<label className="flex flex-col gap-2">
 								<span className="text-foreground text-sm font-semibold">
-									Private username <span className="text-zinc-500">(optional)</span>
+									Private username <span className="text-zinc-400">(optional)</span>
 								</span>
 								<Input
+									id="player-username"
 									value={username}
-									onChange={(event) => setUsername(event.target.value)}
+									onChange={(event) => {
+										setUsername(event.target.value);
+										setJoinErrors((current) => ({
+											...current,
+											username: undefined,
+										}));
+									}}
 									placeholder="Only for logging in from another device"
 									maxLength={20}
 									autoComplete="username"
 									autoCapitalize="none"
 									enterKeyHint="go"
 									spellCheck={false}
+									aria-invalid={Boolean(joinErrors.username)}
+									aria-describedby={
+										joinErrors.username ? "player-username-error" : undefined
+									}
 								/>
-								<p className="text-sm leading-6 text-zinc-500">
+								{joinErrors.username ? (
+									<p
+										id="player-username-error"
+										className="text-sm leading-6 text-rose-300"
+									>
+										{joinErrors.username}
+									</p>
+								) : null}
+								<p className="text-sm leading-6 text-zinc-400">
 									This never appears on the leaderboard. Use it only if you want to
 									recover this same entry on another device later.
 								</p>
@@ -476,27 +618,48 @@ function PlayerChallengeRoute() {
 							<p className="text-sm font-semibold text-white">
 								Already joined from another device?
 							</p>
-							<p className="mt-2 text-sm leading-6 text-zinc-500">
+							<p className="mt-2 text-sm leading-6 text-zinc-400">
 								Use your private username to reconnect this device to your picks.
 							</p>
-							<div className="mt-4 flex flex-col gap-3 sm:flex-row">
+							<form
+								className="mt-4 flex flex-col gap-3 sm:flex-row"
+								onSubmit={(event) => {
+									event.preventDefault();
+									void handleRecoverParticipant();
+								}}
+							>
 								<Input
+									id="player-recovery-username"
 									value={recoveryUsername}
-									onChange={(event) => setRecoveryUsername(event.target.value)}
+									onChange={(event) => {
+										setRecoveryUsername(event.target.value);
+										setRecoveryError(null);
+									}}
 									placeholder="Enter your private username"
 									autoComplete="username"
 									autoCapitalize="none"
 									spellCheck={false}
+									aria-invalid={Boolean(recoveryError)}
+									aria-describedby={
+										recoveryError ? "player-recovery-error" : undefined
+									}
 								/>
 								<Button
-									type="button"
+									type="submit"
 									variant="outline"
-									onClick={handleRecoverParticipant}
 									disabled={isRecovering}
 								>
 									{isRecovering ? "Checking..." : "Recover my entry"}
 								</Button>
-							</div>
+							</form>
+							{recoveryError ? (
+								<p
+									id="player-recovery-error"
+									className="mt-3 text-sm leading-6 text-rose-300"
+								>
+									{recoveryError}
+								</p>
+							) : null}
 						</div>
 					</GlassCard>
 				) : hasSubmitted ? (
@@ -522,26 +685,33 @@ function PlayerChallengeRoute() {
 
 						<div className="mt-6 mb-20 grid gap-4">
 							{orderedQuestions.map((question, questionIndex) => (
-								<div
+								<fieldset
 									key={question._id}
 									className="border-border bg-secondary/30 rounded-xl border p-4"
 								>
-									<div className="flex items-start justify-between gap-3">
-										<div className="flex items-start gap-3">
-											<span className="text-muted-foreground mt-0.5 text-xs font-bold tracking-widest">
-												Q{questionIndex + 1}
-											</span>
-											<h2 className="text-foreground text-lg leading-7 font-semibold">
-												{question.text}
-											</h2>
+									<legend className="w-full">
+										<div className="flex items-start justify-between gap-3">
+											<div className="flex items-start gap-3">
+												<span className="text-muted-foreground mt-0.5 text-xs font-bold tracking-widest">
+													Q{questionIndex + 1}
+												</span>
+												<h2 className="text-foreground text-lg leading-7 font-semibold">
+													{question.text}
+												</h2>
+											</div>
+											<Lock className="text-primary/60 mt-0.5 h-4 w-4 shrink-0" />
 										</div>
-										<Lock className="text-primary/60 mt-0.5 h-4 w-4 shrink-0" />
-									</div>
+									</legend>
 									<div className="mt-4 grid gap-3">
 										{question.options.map((option, optionIndex) => (
 											<OptionButton
 												key={option}
 												locked
+												role="radio"
+												aria-checked={
+													selections[question._id.toString()] === optionIndex
+												}
+												aria-readonly="true"
 												selected={
 													selections[question._id.toString()] === optionIndex
 												}
@@ -556,7 +726,7 @@ function PlayerChallengeRoute() {
 											</OptionButton>
 										))}
 									</div>
-								</div>
+								</fieldset>
 							))}
 						</div>
 					</GlassCard>
@@ -572,34 +742,60 @@ function PlayerChallengeRoute() {
 								const isAnswered =
 									selections[question._id.toString()] !== undefined;
 								return (
-									<div
+									<fieldset
 										key={question._id}
 										id={`question-${question._id}`}
 										className="border-border bg-secondary/30 scroll-mt-36 rounded-xl border p-4"
+										role="radiogroup"
+										aria-labelledby={`question-legend-${question._id}`}
 									>
-										<div className="flex items-start justify-between gap-3">
-											<div className="flex items-start gap-3">
-												<span className="text-muted-foreground mt-0.5 text-xs font-bold tracking-widest">
-													Q{questionIndex + 1}
-												</span>
-												<h2 className="text-foreground text-lg leading-7 font-semibold">
-													{question.text}
-												</h2>
+										<legend id={`question-legend-${question._id}`} className="w-full">
+											<div className="flex items-start justify-between gap-3">
+												<div className="flex items-start gap-3">
+													<span className="text-muted-foreground mt-0.5 text-xs font-bold tracking-widest">
+														Q{questionIndex + 1}
+													</span>
+													<h2 className="text-foreground text-lg leading-7 font-semibold">
+														{question.text}
+													</h2>
+												</div>
+												{isAnswered ? (
+													<span className="bg-primary mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center">
+														<Check className="h-3.5 w-3.5 text-black" />
+													</span>
+												) : null}
 											</div>
-											{isAnswered ? (
-												<span className="bg-primary mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center">
-													<Check className="h-3.5 w-3.5 text-black" />
-												</span>
-											) : null}
-										</div>
+										</legend>
 										<div className="mt-4 grid gap-3">
 											{question.options.map((option, optionIndex) => (
 												<OptionButton
 													key={option}
+													role="radio"
+													aria-checked={
+														selections[question._id.toString()] === optionIndex
+													}
+													tabIndex={
+														selections[question._id.toString()] === optionIndex ||
+														optionIndex === 0
+															? 0
+															: -1
+													}
 													onClick={() =>
 														updateSelection(
 															question._id.toString(),
 															optionIndex
+														)
+													}
+													onKeyDown={(event) =>
+														handleRadioOptionKeyDown(
+															event,
+															optionIndex,
+															question.options.length,
+															(nextIndex) =>
+																updateSelection(
+																	question._id.toString(),
+																	nextIndex
+																),
 														)
 													}
 													selected={
@@ -610,7 +806,7 @@ function PlayerChallengeRoute() {
 												</OptionButton>
 											))}
 										</div>
-									</div>
+									</fieldset>
 								);
 							})}
 						</div>

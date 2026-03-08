@@ -327,20 +327,93 @@ function isQuestionEditingUnlocked(challenge: Doc<"challenges">) {
 	return challenge.questionEditUnlocked ?? challenge.status === "draft";
 }
 
-function serializePublicQuestion(
-	question: Doc<"questions">,
-	status: Doc<"challenges">["status"],
-) {
-	const { pointValue, ...questionWithoutPoints } = question;
-	void pointValue;
+function serializePublicQuestion(question: Doc<"questions">) {
+	return {
+		_id: question._id,
+		text: question.text,
+		options: question.options,
+		order: question.order,
+	};
+}
 
-	if (status === "open") {
-		const { correctOptionIndex, ...rest } = questionWithoutPoints;
-		void correctOptionIndex;
-		return rest;
+function serializePublicChallenge(
+	challenge: Doc<"challenges">,
+	questions: Array<Doc<"questions">>,
+) {
+	return {
+		_id: challenge._id,
+		title: challenge.title,
+		sport: challenge.sport,
+		status: challenge.status,
+		winnersAnnouncedAt: challenge.winnersAnnouncedAt ?? null,
+		questions: questions.map((question) => serializePublicQuestion(question)),
+	};
+}
+
+function serializeAdminChallenge(
+	challenge: Doc<"challenges">,
+	questions: Array<Doc<"questions">>,
+) {
+	return {
+		_id: challenge._id,
+		title: challenge.title,
+		sport: challenge.sport,
+		status: challenge.status,
+		questionEditUnlocked: challenge.questionEditUnlocked ?? false,
+		winnersAnnouncedAt: challenge.winnersAnnouncedAt ?? null,
+		questions,
+	};
+}
+
+function serializeParticipantIdentity(participant: Doc<"participants">) {
+	return {
+		_id: participant._id,
+		nickname: participant.nickname,
+	};
+}
+
+function ensureChallengeOpenForPredictions(
+	challenge: Doc<"challenges">,
+	action: "join" | "submit",
+) {
+	if (challenge.status === "draft") {
+		throw new Error("This challenge is not open yet.");
 	}
 
-	return questionWithoutPoints;
+	if (challenge.status === "scoring") {
+		throw new Error(
+			action === "join"
+				? "Predictions are locked because scoring has started."
+				: "Predictions are locked because scoring has started.",
+		);
+	}
+
+	if (challenge.status === "closed") {
+		throw new Error("This challenge has ended.");
+	}
+}
+
+async function hasChallengeSubmissions(
+	ctx: ReadCtx,
+	challengeId: Id<"challenges">,
+) {
+	const prediction = await ctx.db
+		.query("predictions")
+		.withIndex("by_challenge", (q) => q.eq("challengeId", challengeId))
+		.first();
+
+	return Boolean(prediction);
+}
+
+async function ensureQuestionSetMutable(
+	ctx: ReadCtx,
+	challengeId: Id<"challenges">,
+) {
+	if (await hasChallengeSubmissions(ctx, challengeId)) {
+		throw new Error(
+			"Questions cannot be edited after a player has submitted picks.",
+		);
+	}
 }
 
 async function ensureWinnerMessagesSeeded(ctx: MutationCtx) {
@@ -503,26 +576,14 @@ async function buildChallengeLeaderboard(
 			) ?? null,
 	});
 
-	const podium = rows
-		.filter((row) => row.medal !== null)
-		.slice(0, MEDAL_TIERS.length)
-		.map((row) => ({
-			rank: row.rank,
-			medal: row.medal as MedalTier,
-			nickname: row.nickname,
-			score: row.score,
-			correctCount: row.correctCount,
-			totalAnswered: row.totalAnswered,
-			accuracy: row.accuracy,
-			uuid: row.uuid,
-		}));
-
+	let currentParticipantId: string | null = null;
 	let currentParticipant = null;
 	let celebrationMessage = null;
 
 	if (options?.uuid) {
 		const participant = await findParticipantByUuid(ctx, challengeId, options.uuid);
 		if (participant) {
+			currentParticipantId = participant._id.toString();
 			const row = rows.find(
 				(candidate) => candidate.participantId === participant._id.toString(),
 			);
@@ -567,10 +628,27 @@ async function buildChallengeLeaderboard(
 		}
 	}
 
+	const podium = rows
+		.filter((row) => row.medal !== null)
+		.slice(0, MEDAL_TIERS.length)
+		.map((row) => ({
+			rank: row.rank,
+			medal: row.medal as MedalTier,
+			nickname: row.nickname,
+			score: row.score,
+			correctCount: row.correctCount,
+			totalAnswered: row.totalAnswered,
+			accuracy: row.accuracy,
+			isCurrentPlayer:
+				currentParticipantId !== null &&
+				row.participantId === currentParticipantId,
+		}));
+
 	return {
 		challenge,
 		rows,
 		podium,
+		currentParticipantId,
 		currentParticipant,
 		celebrationMessage,
 		participantCount: participants.length,
@@ -656,6 +734,7 @@ export const addQuestion = mutation({
 					"Questions are locked. Unpublish to edit questions.",
 				);
 			}
+			await ensureQuestionSetMutable(ctx, challengeId);
 
 			const existingQuestions = await listChallengeQuestions(ctx, challengeId);
 			return await ctx.db.insert("questions", {
@@ -704,6 +783,7 @@ export const updateQuestion = mutation({
 					"Questions are locked. Unpublish to edit questions.",
 				);
 			}
+			await ensureQuestionSetMutable(ctx, challengeId);
 
 			const question = await requireQuestion(ctx, questionId);
 			ensureQuestionInChallenge(question, challengeId);
@@ -748,6 +828,7 @@ export const deleteQuestion = mutation({
 					"Questions are locked. Unpublish to edit questions.",
 				);
 			}
+			await ensureQuestionSetMutable(ctx, challengeId);
 
 			const question = await requireQuestion(ctx, questionId);
 			ensureQuestionInChallenge(question, challengeId);
@@ -834,6 +915,7 @@ export const unpublishChallenge = mutation({
 			if (challenge.status === "closed") {
 				throw new Error("Closed challenges cannot be unpublished.");
 			}
+			await ensureQuestionSetMutable(ctx, challengeId);
 
 			await ctx.db.patch(challengeId, { questionEditUnlocked: true });
 		} catch (error) {
@@ -859,12 +941,7 @@ export const joinChallenge = mutation({
 			}
 
 			const challenge = await requireChallenge(ctx, challengeId);
-			if (challenge.status === "draft") {
-				throw new Error("This challenge is not open yet.");
-			}
-			if (challenge.status === "closed") {
-				throw new Error("This challenge has ended.");
-			}
+			ensureChallengeOpenForPredictions(challenge, "join");
 
 			const uuid = requireTrimmed(args.uuid, "UUID");
 			const nickname = validateNickname(args.nickname);
@@ -956,99 +1033,111 @@ export const submitPredictions = mutation({
 	args: {
 		challengeId: v.string(),
 		participantId: v.string(),
+		uuid: v.string(),
 		predictions: v.array(predictionInput),
 	},
 	handler: async (ctx, args) => {
 		try {
-		const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
-		const participantId = ctx.db.normalizeId(
-			"participants",
-			args.participantId,
-		);
-
-		if (!challengeId || !participantId) {
-			throw new Error("Challenge not found.");
-		}
-
-		const challenge = await requireChallenge(ctx, challengeId);
-		if (challenge.status === "draft") {
-			throw new Error("This challenge is not open yet.");
-		}
-		if (challenge.status === "closed") {
-			throw new Error("This challenge has ended.");
-		}
-
-		const participant = await requireParticipant(ctx, participantId);
-		ensureParticipantInChallenge(participant, challengeId);
-
-		const existingPrediction = await ctx.db
-			.query("predictions")
-			.withIndex("by_participant", (q) => q.eq("participantId", participantId))
-			.first();
-		if (existingPrediction) {
-			throw new Error("Predictions have already been submitted.");
-		}
-
-		const questions = await listChallengeQuestions(ctx, challengeId);
-		if (questions.length === 0) {
-			throw new Error("This challenge has no questions.");
-		}
-
-		if (args.predictions.length !== questions.length) {
-			throw new Error("Submit one prediction for every question.");
-		}
-
-		const questionMap = new Map<Id<"questions">, Doc<"questions">>(
-			questions.map((question: Doc<"questions">) => [question._id, question]),
-		);
-		const seenQuestionIds = new Set<string>();
-
-		for (const prediction of args.predictions) {
-			const questionId = ctx.db.normalizeId("questions", prediction.questionId);
-			if (!questionId) {
-				throw new Error("One or more selected questions are invalid.");
-			}
-
-			const question = questionMap.get(questionId);
-			if (!question) {
-				throw new Error("One or more questions do not belong to this challenge.");
-			}
-
-			const key = questionId.toString();
-			if (seenQuestionIds.has(key)) {
-				throw new Error("Each question can only be answered once.");
-			}
-			seenQuestionIds.add(key);
-
-			ensureOptionIndex(
-				prediction.selectedOptionIndex,
-				question.options,
-				"Selected option",
+			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+			const participantId = ctx.db.normalizeId(
+				"participants",
+				args.participantId,
 			);
-		}
 
-		if (seenQuestionIds.size !== questions.length) {
-			throw new Error("Submit one prediction for every question.");
-		}
+			if (!challengeId || !participantId) {
+				throw new Error("Challenge not found.");
+			}
 
-		const submittedAt = Date.now();
-		await Promise.all(
-			args.predictions.map(async (prediction: typeof args.predictions[number]) => {
+			const challenge = await requireChallenge(ctx, challengeId);
+			ensureChallengeOpenForPredictions(challenge, "submit");
+
+			const participant = await requireParticipant(ctx, participantId);
+			ensureParticipantInChallenge(participant, challengeId);
+
+			const authorizedParticipant = await findParticipantByUuid(
+				ctx,
+				challengeId,
+				requireTrimmed(args.uuid, "UUID"),
+			);
+			if (!authorizedParticipant || authorizedParticipant._id !== participantId) {
+				throw new Error("This device is not authorized for that participant.");
+			}
+
+			const existingPrediction = await ctx.db
+				.query("predictions")
+				.withIndex("by_participant", (q) => q.eq("participantId", participantId))
+				.first();
+			if (existingPrediction) {
+				throw new Error("Predictions have already been submitted.");
+			}
+
+			const questions = await listChallengeQuestions(ctx, challengeId);
+			if (questions.length === 0) {
+				throw new Error("This challenge has no questions.");
+			}
+
+			if (args.predictions.length !== questions.length) {
+				throw new Error("Submit one prediction for every question.");
+			}
+
+			const questionMap = new Map<Id<"questions">, Doc<"questions">>(
+				questions.map((question: Doc<"questions">) => [question._id, question]),
+			);
+			const seenQuestionIds = new Set<string>();
+
+			for (const prediction of args.predictions) {
 				const questionId = ctx.db.normalizeId("questions", prediction.questionId);
 				if (!questionId) {
 					throw new Error("One or more selected questions are invalid.");
 				}
 
-				await ctx.db.insert("predictions", {
-					participantId,
-					questionId,
-					challengeId,
-					selectedOptionIndex: prediction.selectedOptionIndex,
-					submittedAt,
-				});
-			}),
-		);
-		await ctx.db.patch(participantId, { submittedAt });
+				const question = questionMap.get(questionId);
+				if (!question) {
+					throw new Error(
+						"One or more questions do not belong to this challenge.",
+					);
+				}
+
+				const key = questionId.toString();
+				if (seenQuestionIds.has(key)) {
+					throw new Error("Each question can only be answered once.");
+				}
+				seenQuestionIds.add(key);
+
+				ensureOptionIndex(
+					prediction.selectedOptionIndex,
+					question.options,
+					"Selected option",
+				);
+			}
+
+			if (seenQuestionIds.size !== questions.length) {
+				throw new Error("Submit one prediction for every question.");
+			}
+
+			const submittedAt = Date.now();
+			await Promise.all(
+				args.predictions.map(
+					async (prediction: typeof args.predictions[number]) => {
+						const questionId = ctx.db.normalizeId(
+							"questions",
+							prediction.questionId,
+						);
+						if (!questionId) {
+							throw new Error("One or more selected questions are invalid.");
+						}
+
+						await ctx.db.insert("predictions", {
+							participantId,
+							questionId,
+							challengeId,
+							selectedOptionIndex: prediction.selectedOptionIndex,
+							submittedAt,
+						});
+					},
+				),
+			);
+			await ctx.db.patch(participantId, { submittedAt });
 		} catch (error) {
 			logMutationError("submitPredictions", args, error);
 			throw error;
@@ -1262,19 +1351,14 @@ export const getChallenge = query({
 		}
 
 		const questions = await listChallengeQuestions(ctx, challengeId);
-
-		return {
-			...challenge,
-			questions: questions.map((question: Doc<"questions">) =>
-				serializePublicQuestion(question, challenge.status),
-			),
-		};
+		return serializePublicChallenge(challenge, questions);
 	},
 });
 
 export const getAdminChallenge = query({
 	args: {
 		challengeId: v.string(),
+		adminSecret: v.string(),
 	},
 	handler: async (ctx, args) => {
 		const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
@@ -1282,16 +1366,19 @@ export const getAdminChallenge = query({
 			return null;
 		}
 
-		const challenge = await ctx.db.get(challengeId);
-		if (!challenge) {
+		let challenge: Doc<"challenges">;
+		try {
+			challenge = await requireAdminChallenge(
+				ctx,
+				challengeId,
+				requireTrimmed(args.adminSecret, "Admin secret"),
+			);
+		} catch {
 			return null;
 		}
 
 		const questions = await listChallengeQuestions(ctx, challengeId);
-		return {
-			...challenge,
-			questions,
-		};
+		return serializeAdminChallenge(challenge, questions);
 	},
 });
 
@@ -1337,7 +1424,8 @@ export const getParticipant = query({
 			return null;
 		}
 
-		return await findParticipantByUuid(ctx, challengeId, args.uuid);
+		const participant = await findParticipantByUuid(ctx, challengeId, args.uuid);
+		return participant ? serializeParticipantIdentity(participant) : null;
 	},
 });
 
@@ -1345,6 +1433,7 @@ export const getParticipantPredictions = query({
 	args: {
 		participantId: v.string(),
 		challengeId: v.string(),
+		uuid: v.string(),
 	},
 	handler: async (ctx, args) => {
 		const participantId = ctx.db.normalizeId("participants", args.participantId);
@@ -1356,6 +1445,15 @@ export const getParticipantPredictions = query({
 
 		const participant = await ctx.db.get(participantId);
 		if (!participant || participant.challengeId !== challengeId) {
+			return {};
+		}
+
+		const authorizedParticipant = await findParticipantByUuid(
+			ctx,
+			challengeId,
+			args.uuid,
+		);
+		if (!authorizedParticipant || authorizedParticipant._id !== participantId) {
 			return {};
 		}
 
@@ -1409,11 +1507,13 @@ export const getLeaderboard = query({
 				rank: row.rank,
 				medal: row.medal,
 				nickname: row.nickname,
-				uuid: row.uuid,
 				score: row.score,
 				correctCount: row.correctCount,
 				totalAnswered: row.totalAnswered,
 				accuracy: row.accuracy,
+				isCurrentPlayer:
+					leaderboard.currentParticipantId !== null &&
+					row.participantId === leaderboard.currentParticipantId,
 			})),
 		};
 	},

@@ -61,7 +61,9 @@ function LeaderboardRoute() {
 		participant?._id.toString() ?? storedParticipantId ?? null;
 	const participantPredictions = useQuery(
 		api.challenges.getParticipantPredictions,
-		participantId ? { challengeId, participantId } : "skip"
+		participantId && uuid
+			? { challengeId, participantId, uuid }
+			: "skip"
 	);
 
 	const hasSubmitted =
@@ -87,7 +89,6 @@ function LeaderboardRoute() {
 		);
 	}
 
-	const currentPlayerUuid = uuid;
 	const remainingRows = leaderboard.rows.filter((row) => row.medal === null);
 
 	return (
@@ -172,7 +173,6 @@ function LeaderboardRoute() {
 				<>
 					<PodiumSection
 						podium={leaderboard.podium}
-						currentPlayerUuid={currentPlayerUuid}
 						winnersAnnounced={leaderboard.winnersAnnounced}
 					/>
 					<GlassCard className="px-5 py-6 sm:px-8">
@@ -206,11 +206,11 @@ function LeaderboardRoute() {
 								</div>
 							) : (
 								remainingRows.map((row) => {
-									const isCurrentPlayer = row.uuid === currentPlayerUuid;
+									const isCurrentPlayer = row.isCurrentPlayer;
 
 									return (
 										<div
-											key={`${row.uuid}-${row.rank}`}
+											key={`${row.rank}-${row.nickname}`}
 											className={cn(
 												"border-2 px-4 py-4 transition",
 												isCurrentPlayer

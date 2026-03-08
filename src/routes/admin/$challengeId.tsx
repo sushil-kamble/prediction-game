@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, KeyboardEvent } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import {
@@ -65,10 +65,38 @@ export const Route = createFileRoute("/admin/$challengeId")({
 	component: AdminChallengeRoute,
 });
 
+function handleRadioOptionKeyDown(
+	event: KeyboardEvent<HTMLButtonElement>,
+	currentIndex: number,
+	totalOptions: number,
+	onSelect: (nextIndex: number) => void,
+) {
+	switch (event.key) {
+		case "ArrowDown":
+		case "ArrowRight":
+			event.preventDefault();
+			onSelect((currentIndex + 1) % totalOptions);
+			return;
+		case "ArrowUp":
+		case "ArrowLeft":
+			event.preventDefault();
+			onSelect((currentIndex - 1 + totalOptions) % totalOptions);
+			return;
+		case "Home":
+			event.preventDefault();
+			onSelect(0);
+			return;
+		case "End":
+			event.preventDefault();
+			onSelect(totalOptions - 1);
+			return;
+		default:
+			return;
+	}
+}
+
 function AdminChallengeRoute() {
 	const { challengeId } = Route.useParams();
-	const challenge = useQuery(api.challenges.getAdminChallenge, { challengeId });
-	const leaderboard = useQuery(api.challenges.getLeaderboard, { challengeId });
 	const addQuestion = useMutation(api.challenges.addQuestion);
 	const updateQuestion = useMutation(api.challenges.updateQuestion);
 	const deleteQuestion = useMutation(api.challenges.deleteQuestion);
@@ -101,6 +129,20 @@ function AdminChallengeRoute() {
 	const [isAnnouncing, setIsAnnouncing] = useState(false);
 	const [isClearingMarkings, setIsClearingMarkings] = useState(false);
 	const [isSharing, setIsSharing] = useState(false);
+
+	const challenge = useQuery(
+		api.challenges.getAdminChallenge,
+		adminSecret
+			? {
+					challengeId,
+					adminSecret,
+				}
+			: "skip"
+	);
+	const leaderboard = useQuery(
+		api.challenges.getLeaderboard,
+		adminSecret ? { challengeId } : "skip"
+	);
 
 	useEffect(() => {
 		setAdminSecret(getStoredAdminChallenge(challengeId)?.adminSecret ?? null);
@@ -150,11 +192,26 @@ function AdminChallengeRoute() {
 		options.every((option) => option.trim().length === 0) &&
 		pointValue === 1;
 
-	if (
-		challenge === undefined ||
-		leaderboard === undefined ||
-		adminSecret === undefined
-	) {
+	if (adminSecret === undefined) {
+		return <AdminChallengeSkeleton />;
+	}
+
+	if (adminSecret === null) {
+		return (
+			<FullScreenState
+				title="Admin access unavailable"
+				description="This browser does not have the admin secret for this challenge. Open it from the device that created the challenge."
+			>
+				<Button asChild>
+					<Link to="/admin" className="no-underline">
+						Back to admin
+					</Link>
+				</Button>
+			</FullScreenState>
+		);
+	}
+
+	if (challenge === undefined || leaderboard === undefined) {
 		return <AdminChallengeSkeleton />;
 	}
 
@@ -507,7 +564,8 @@ function AdminChallengeRoute() {
 													setOptions((current) => [...current, ""])
 												}
 												disabled={!isQuestionEditUnlocked}
-												className="text-primary hover:text-primary/80 flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase transition-colors disabled:opacity-40"
+												className="focus-visible:ring-primary/40 text-primary hover:text-primary/80 flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase transition-colors outline-none focus-visible:ring-4 disabled:opacity-40"
+												aria-label="Add another option"
 											>
 												<Plus className="h-3.5 w-3.5" />
 												Add
@@ -547,7 +605,8 @@ function AdminChallengeRoute() {
 												disabled={
 													!isQuestionEditUnlocked || options.length <= 2
 												}
-												className="hover:border-destructive hover:text-destructive flex h-10 w-10 shrink-0 items-center justify-center border-2 border-zinc-700 text-zinc-500 transition-colors disabled:opacity-30"
+												className="focus-visible:ring-primary/40 hover:border-destructive hover:text-destructive flex h-10 w-10 shrink-0 items-center justify-center border-2 border-zinc-700 text-zinc-500 transition-colors outline-none focus-visible:ring-4 disabled:opacity-30"
+												aria-label={`Remove option ${index + 1}`}
 											>
 												<X className="h-4 w-4" />
 											</button>
@@ -567,7 +626,8 @@ function AdminChallengeRoute() {
 												setPointValue((current) => Math.max(1, current - 1))
 											}
 											disabled={!isQuestionEditUnlocked || pointValue <= 1}
-											className="hover:border-primary hover:text-primary flex h-10 w-10 items-center justify-center border-2 border-r-0 border-zinc-700 bg-black text-zinc-400 transition-colors disabled:opacity-30"
+											className="focus-visible:ring-primary/40 hover:border-primary hover:text-primary flex h-10 w-10 items-center justify-center border-2 border-r-0 border-zinc-700 bg-black text-zinc-400 transition-colors outline-none focus-visible:ring-4 disabled:opacity-30"
+											aria-label="Decrease point value"
 										>
 											<Minus className="h-4 w-4" />
 										</button>
@@ -580,7 +640,8 @@ function AdminChallengeRoute() {
 											type="button"
 											onClick={() => setPointValue((current) => current + 1)}
 											disabled={!isQuestionEditUnlocked}
-											className="hover:border-primary hover:text-primary flex h-10 w-10 items-center justify-center border-2 border-l-0 border-zinc-700 bg-black text-zinc-400 transition-colors disabled:opacity-30"
+											className="focus-visible:ring-primary/40 hover:border-primary hover:text-primary flex h-10 w-10 items-center justify-center border-2 border-l-0 border-zinc-700 bg-black text-zinc-400 transition-colors outline-none focus-visible:ring-4 disabled:opacity-30"
+											aria-label="Increase point value"
 										>
 											<Plus className="h-4 w-4" />
 										</button>
@@ -670,7 +731,11 @@ function AdminChallengeRoute() {
 
 							{challenge.status !== "draft" ? (
 								<div className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto_auto]">
-									<Input readOnly value={shareUrl} />
+									<Input
+										readOnly
+										value={shareUrl}
+										aria-label="Challenge share link"
+									/>
 									<Button onClick={() => setIsShareSheetOpen(true)}>
 										<Share2 className="h-4 w-4" />
 										Share
@@ -747,14 +812,16 @@ function AdminChallengeRoute() {
 												<button
 													type="button"
 													onClick={() => beginEditing(question)}
-													className="hover:border-primary hover:text-primary flex h-9 w-9 items-center justify-center border-2 border-zinc-700 text-zinc-400 transition-colors"
+													className="focus-visible:ring-primary/40 hover:border-primary hover:text-primary flex h-9 w-9 items-center justify-center border-2 border-zinc-700 text-zinc-400 transition-colors outline-none focus-visible:ring-4"
+													aria-label={`Edit question ${index + 1}`}
 												>
 													<Pencil className="h-3.5 w-3.5" />
 												</button>
 												<button
 													type="button"
 													onClick={() => setDeleteTarget(question)}
-													className="hover:border-destructive hover:text-destructive flex h-9 w-9 items-center justify-center border-2 border-zinc-700 text-zinc-400 transition-colors"
+													className="focus-visible:ring-primary/40 hover:border-destructive hover:text-destructive flex h-9 w-9 items-center justify-center border-2 border-zinc-700 text-zinc-400 transition-colors outline-none focus-visible:ring-4"
+													aria-label={`Delete question ${index + 1}`}
 												>
 													<Trash2 className="h-3.5 w-3.5" />
 												</button>
@@ -770,7 +837,6 @@ function AdminChallengeRoute() {
 				{leaderboard.podium.length > 0 ? (
 					<PodiumSection
 						podium={leaderboard.podium}
-						currentPlayerUuid={null}
 						winnersAnnounced={leaderboard.winnersAnnounced}
 						elevateGold={false}
 						title={
@@ -800,21 +866,48 @@ function AdminChallengeRoute() {
 
 							<div className="mt-6 grid gap-4">
 								{orderedQuestions.map((question) => (
-									<div
+									<fieldset
 										key={question._id}
 										className="border-border bg-secondary/30 rounded-xl border p-4"
+										role="radiogroup"
+										aria-labelledby={`admin-score-${question._id}`}
 									>
-										<h3 className="text-foreground text-lg leading-7 font-semibold">
+										<h3
+											id={`admin-score-${question._id}`}
+											className="text-foreground text-lg leading-7 font-semibold"
+										>
 											{question.text}
 										</h3>
 										<div className="mt-4 grid gap-3">
 											{question.options.map((option, optionIndex) => (
 												<OptionButton
 													key={option}
+													role="radio"
+													aria-checked={
+														question.correctOptionIndex === optionIndex
+													}
+													tabIndex={
+														question.correctOptionIndex === optionIndex ||
+														optionIndex === 0
+															? 0
+															: -1
+													}
 													onClick={() =>
 														handleMarkAnswer(
 															question._id.toString(),
 															optionIndex
+														)
+													}
+													onKeyDown={(event) =>
+														handleRadioOptionKeyDown(
+															event,
+															optionIndex,
+															question.options.length,
+															(nextIndex) =>
+																handleMarkAnswer(
+																	question._id.toString(),
+																	nextIndex
+																),
 														)
 													}
 													correct={question.correctOptionIndex === optionIndex}
@@ -828,7 +921,7 @@ function AdminChallengeRoute() {
 												</OptionButton>
 											))}
 										</div>
-									</div>
+									</fieldset>
 								))}
 							</div>
 
@@ -916,7 +1009,7 @@ function AdminChallengeRoute() {
 					</>
 				}
 			>
-				<Input readOnly value={shareUrl} />
+				<Input readOnly value={shareUrl} aria-label="Challenge share link" />
 			</BottomSheet>
 
 			<AlertDialog

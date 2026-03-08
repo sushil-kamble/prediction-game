@@ -1,9 +1,14 @@
-import { useCallback, useEffect, useRef } from "react";
 import type { ReactNode } from "react";
-import { createPortal } from "react-dom";
-import { ChevronRight, X } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { Button as ShadButton } from "#/components/ui/button";
 import { Input as ShadInput } from "#/components/ui/input";
+import {
+	Sheet,
+	SheetContent,
+	SheetDescription,
+	SheetHeader,
+	SheetTitle,
+} from "#/components/ui/sheet";
 import { Textarea as ShadTextarea } from "#/components/ui/textarea";
 import { Badge } from "#/components/ui/badge";
 import { Skeleton } from "#/components/ui/skeleton";
@@ -20,6 +25,7 @@ export function PageShell({
 }) {
 	return (
 		<main
+			id="main-content"
 			className={cn(
 				"mx-auto flex w-full max-w-5xl flex-col px-4 pb-24",
 				className
@@ -144,7 +150,7 @@ export function OptionButton({
 			data-locked={locked || undefined}
 			{...props}
 			className={cn(
-				"flex min-h-[3.5rem] w-full items-center justify-between border-2 px-5 py-3 text-left text-base font-bold tracking-wider normal-case transition-all",
+				"focus-visible:ring-primary/40 flex min-h-[3.5rem] w-full items-center justify-between border-2 px-5 py-3 text-left text-base font-bold tracking-wider normal-case transition-all outline-none focus-visible:ring-4",
 				selected &&
 					"border-primary bg-primary -translate-x-1 -translate-y-1 text-black shadow-[4px_4px_0px_0px_#ffffff]",
 				!selected &&
@@ -246,112 +252,28 @@ export function BottomSheet({
 	children?: ReactNode;
 	footer?: ReactNode;
 }) {
-	const sheetRef = useRef<HTMLDivElement>(null);
-	const dragStartY = useRef(0);
-	const currentTranslateY = useRef(0);
-	const isDragging = useRef(false);
-
-	/* ── Body scroll lock ── */
-	useEffect(() => {
-		if (!open || typeof document === "undefined") return;
-
-		const scrollY = window.scrollY;
-		document.body.classList.add("scroll-locked");
-		document.body.style.top = `-${scrollY}px`;
-
-		return () => {
-			document.body.classList.remove("scroll-locked");
-			document.body.style.top = "";
-			window.scrollTo(0, scrollY);
-		};
-	}, [open]);
-
-	/* ── Swipe-to-dismiss handlers ── */
-	const handleTouchStart = useCallback((e: React.TouchEvent) => {
-		dragStartY.current = e.touches[0].clientY;
-		isDragging.current = false;
-	}, []);
-
-	const handleTouchMove = useCallback((e: React.TouchEvent) => {
-		const delta = e.touches[0].clientY - dragStartY.current;
-		if (delta > 0) {
-			isDragging.current = true;
-			currentTranslateY.current = delta;
-			if (sheetRef.current) {
-				sheetRef.current.style.transform = `translateY(${delta}px)`;
-				sheetRef.current.style.transition = "none";
-			}
-		}
-	}, []);
-
-	const handleTouchEnd = useCallback(() => {
-		if (currentTranslateY.current > 80) {
-			onClose();
-		} else if (sheetRef.current) {
-			sheetRef.current.style.transform = "";
-			sheetRef.current.style.transition = "";
-		}
-		currentTranslateY.current = 0;
-		isDragging.current = false;
-	}, [onClose]);
-
-	if (!open || typeof document === "undefined") {
-		return null;
-	}
-
-	return createPortal(
-		<div className="fixed inset-0 z-[100] flex animate-[fade-in_200ms_ease-out] items-end justify-center p-0">
-			{/* Backdrop */}
-			<div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
-			<button
-				type="button"
-				onClick={onClose}
-				className="absolute inset-0 cursor-default"
-				aria-label="Close dialog"
-			/>
-			{/* Sheet */}
-			<div
-				ref={sheetRef}
-				className="relative max-h-[90vh] w-full max-w-2xl animate-[slide-up_250ms_cubic-bezier(0.16,1,0.3,1)] overflow-y-auto border-t-4 border-r-4 border-l-4 border-white bg-black px-6 py-6"
-				style={{
-					paddingBottom:
-						"max(2rem, calc(1.5rem + env(safe-area-inset-bottom, 0px)))",
-				}}
-				onTouchStart={handleTouchStart}
-				onTouchMove={handleTouchMove}
-				onTouchEnd={handleTouchEnd}
+	return (
+		<Sheet open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+			<SheetContent
+				side="bottom"
+				className="max-h-[90vh] overflow-y-auto border-t-4 border-r-4 border-l-4 border-white bg-black px-6 py-6 sm:mx-auto sm:max-w-2xl"
 			>
-				{/* Drag handle */}
 				<div className="mb-5 flex justify-center">
 					<div className="h-1.5 w-12 rounded-full bg-zinc-600" />
 				</div>
-
-				<div className="mb-8 flex items-start gap-4">
-					<div className="flex-1">
-						<h2 className="font-display mb-4 text-4xl leading-none text-white uppercase">
-							{title}
-						</h2>
-						{description ? (
-							<p className="text-base leading-relaxed font-medium tracking-wide text-zinc-400 uppercase">
-								{description}
-							</p>
-						) : null}
-					</div>
-					<button
-						type="button"
-						onClick={onClose}
-						className="inline-flex h-12 w-12 items-center justify-center border-2 border-white bg-black text-white transition-colors hover:bg-white hover:text-black"
-						aria-label="Dismiss"
-					>
-						<X className="h-6 w-6" />
-					</button>
-				</div>
+				<SheetHeader className="mb-8 gap-4 px-0 pt-0">
+					<SheetTitle className="font-display text-4xl leading-none text-white uppercase">
+						{title}
+					</SheetTitle>
+					{description ? (
+						<SheetDescription className="text-base leading-relaxed font-medium tracking-wide text-zinc-400 uppercase">
+							{description}
+						</SheetDescription>
+					) : null}
+				</SheetHeader>
 				{children}
-				{footer ? (
-					<div className="mt-8 flex flex-col gap-4">{footer}</div>
-				) : null}
-			</div>
-		</div>,
-		document.body
+				{footer ? <div className="mt-8 flex flex-col gap-4">{footer}</div> : null}
+			</SheetContent>
+		</Sheet>
 	);
 }

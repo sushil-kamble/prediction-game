@@ -22,7 +22,11 @@ export function ChallengeCard({
 	label = "OPEN CHALLENGE",
 }: ChallengeCardProps) {
 	return (
-		<Link to={to} params={{ challengeId }} className="group block no-underline">
+		<Link
+			to={to}
+			params={{ challengeId }}
+			className="focus-visible:ring-primary/40 group block no-underline outline-none focus-visible:ring-4"
+		>
 			<div className="group-hover:border-primary border-2 border-zinc-800 bg-zinc-950 p-6 transition-all group-hover:-translate-y-1 group-hover:bg-zinc-900 group-hover:shadow-[6px_6px_0px_0px_#ccff00]">
 				<div className="flex items-start gap-5">
 					<div className="flex h-16 w-16 shrink-0 items-center justify-center border-2 border-white bg-black text-3xl">
