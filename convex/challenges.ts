@@ -1238,6 +1238,82 @@ export const clearAnswerMarkings = mutation({
 	},
 });
 
+export const lockPredictions = mutation({
+	args: {
+		challengeId: v.string(),
+		adminSecret: v.string(),
+	},
+	handler: async (ctx, args) => {
+		try {
+			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
+			if (!challengeId) {
+				throw new Error("Challenge not found.");
+			}
+
+			const challenge = await requireAdminChallenge(
+				ctx,
+				challengeId,
+				requireTrimmed(args.adminSecret, "Admin secret"),
+			);
+
+			if (challenge.status !== "open") {
+				throw new Error(
+					challenge.status === "draft"
+						? "Publish the challenge before locking predictions."
+						: challenge.status === "scoring"
+							? "Predictions are already locked."
+							: "This challenge is closed.",
+				);
+			}
+
+			await ctx.db.patch(challengeId, { status: "scoring" });
+		} catch (error) {
+			logMutationError("lockPredictions", args, error);
+			throw error;
+		}
+	},
+});
+
+export const unlockPredictions = mutation({
+	args: {
+		challengeId: v.string(),
+		adminSecret: v.string(),
+	},
+	handler: async (ctx, args) => {
+		try {
+			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
+			if (!challengeId) {
+				throw new Error("Challenge not found.");
+			}
+
+			const challenge = await requireAdminChallenge(
+				ctx,
+				challengeId,
+				requireTrimmed(args.adminSecret, "Admin secret"),
+			);
+
+			if (challenge.status !== "scoring") {
+				throw new Error("Predictions are not locked.");
+			}
+
+			const questions = await listChallengeQuestions(ctx, challengeId);
+			const hasMarkedAnswers = questions.some(
+				(q: Doc<"prediction_questions">) => q.correctOptionIndex !== null,
+			);
+			if (hasMarkedAnswers) {
+				throw new Error(
+					"Clear answer markings first before unlocking predictions.",
+				);
+			}
+
+			await ctx.db.patch(challengeId, { status: "open" });
+		} catch (error) {
+			logMutationError("unlockPredictions", args, error);
+			throw error;
+		}
+	},
+});
+
 export const announceWinners = mutation({
 	args: {
 		challengeId: v.string(),

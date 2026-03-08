@@ -105,10 +105,14 @@ export function getAdminHint({
 		return "Questions are unlocked for editing. Publish them to freeze picks and enable answer marking.";
 	}
 
+	if (status === "open") {
+		return "Challenge is live and accepting predictions. Lock predictions when the match starts to stop new submissions.";
+	}
+
 	const allScored = scoredCount === totalQuestions && totalQuestions > 0;
 
 	if (!allScored) {
-		return `Mark the correct answer for each question below. ${scoredCount}/${totalQuestions} scored so far.`;
+		return `Predictions locked. Mark the correct answer for each question. ${scoredCount}/${totalQuestions} scored.`;
 	}
 
 	if (!hasSubmissions) {

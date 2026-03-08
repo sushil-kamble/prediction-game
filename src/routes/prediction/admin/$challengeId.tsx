@@ -7,11 +7,13 @@ import {
 	Check,
 	Copy,
 	Info,
+	Lock,
 	Minus,
 	Pencil,
 	Plus,
 	Share2,
 	Trash2,
+	Unlock,
 	X,
 } from "lucide-react";
 import {
@@ -105,6 +107,8 @@ function AdminChallengeRoute() {
 	const deleteQuestion = useMutation(api.challenges.deleteQuestion);
 	const publishChallenge = useMutation(api.challenges.publishChallenge);
 	const unpublishChallenge = useMutation(api.challenges.unpublishChallenge);
+	const lockPredictions = useMutation(api.challenges.lockPredictions);
+	const unlockPredictions = useMutation(api.challenges.unlockPredictions);
 	const markCorrectAnswer = useMutation(api.challenges.markCorrectAnswer);
 	const clearAnswerMarkings = useMutation(api.challenges.clearAnswerMarkings);
 	const announceWinners = useMutation(api.challenges.announceWinners);
@@ -132,6 +136,10 @@ function AdminChallengeRoute() {
 	const [isAnnouncing, setIsAnnouncing] = useState(false);
 	const [isClearingMarkings, setIsClearingMarkings] = useState(false);
 	const [isSharing, setIsSharing] = useState(false);
+	const [isLocking, setIsLocking] = useState(false);
+	const [isUnlocking, setIsUnlocking] = useState(false);
+	const [isLockConfirmOpen, setIsLockConfirmOpen] = useState(false);
+	const [isUnlockConfirmOpen, setIsUnlockConfirmOpen] = useState(false);
 
 	const challenge = useQuery(
 		api.challenges.getAdminChallenge,
@@ -457,6 +465,34 @@ function AdminChallengeRoute() {
 		}
 	}
 
+	async function handleLockPredictions() {
+		if (!adminSecret) return;
+		setIsLocking(true);
+		try {
+			await lockPredictions({ challengeId, adminSecret });
+			showToast("Predictions locked. No new submissions allowed.", "success");
+			setIsLockConfirmOpen(false);
+		} catch (error) {
+			showToast(getErrorMessage(error), "error");
+		} finally {
+			setIsLocking(false);
+		}
+	}
+
+	async function handleUnlockPredictions() {
+		if (!adminSecret) return;
+		setIsUnlocking(true);
+		try {
+			await unlockPredictions({ challengeId, adminSecret });
+			showToast("Predictions unlocked. Players can submit again.", "success");
+			setIsUnlockConfirmOpen(false);
+		} catch (error) {
+			showToast(getErrorMessage(error), "error");
+		} finally {
+			setIsUnlocking(false);
+		}
+	}
+
 	function beginEditing(question: AdminQuestion) {
 		setEditingQuestionId(question._id.toString());
 		setQuestionText(question.text);
@@ -774,6 +810,46 @@ function AdminChallengeRoute() {
 								</div>
 							) : null}
 						</GlassCard>
+
+						{(challenge.status === "open" ||
+							challenge.status === "scoring") &&
+						!isQuestionEditUnlocked ? (
+							<GlassCard className="px-5 py-6 sm:px-8">
+								<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+									<div>
+										<SectionEyebrow>Predictions</SectionEyebrow>
+										<h2 className="font-display text-foreground text-3xl">
+											{challenge.status === "open"
+												? "Accepting submissions"
+												: "Submissions locked"}
+										</h2>
+										<p className="mt-2 text-sm font-medium text-zinc-400">
+											{challenge.status === "open"
+												? "Players can currently join and submit predictions. Lock when the match starts."
+												: "No new joins or submissions. You can score answers now."}
+										</p>
+									</div>
+									{challenge.status === "open" ? (
+										<Button
+											className="sm:w-auto"
+											onClick={() => setIsLockConfirmOpen(true)}
+										>
+											<Lock className="h-4 w-4" />
+											Lock predictions
+										</Button>
+									) : answeredCount === 0 ? (
+										<Button
+											variant="outline"
+											className="sm:w-auto"
+											onClick={() => setIsUnlockConfirmOpen(true)}
+										>
+											<Unlock className="h-4 w-4" />
+											Unlock predictions
+										</Button>
+									) : null}
+								</div>
+							</GlassCard>
+						) : null}
 					</>
 				) : null}
 
@@ -1138,6 +1214,60 @@ function AdminChallengeRoute() {
 							disabled={isClearingMarkings}
 						>
 							{isClearingMarkings ? "Clearing..." : "Clear markings"}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+
+			<AlertDialog
+				open={isLockConfirmOpen}
+				onOpenChange={setIsLockConfirmOpen}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Lock predictions?</AlertDialogTitle>
+						<AlertDialogDescription>
+							Players will no longer be able to join or submit predictions. Use
+							this when the match starts.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel className="w-full sm:w-auto">
+							Keep open
+						</AlertDialogCancel>
+						<AlertDialogAction
+							className="w-full sm:w-auto"
+							onClick={handleLockPredictions}
+							disabled={isLocking}
+						>
+							{isLocking ? "Locking..." : "Lock predictions"}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+
+			<AlertDialog
+				open={isUnlockConfirmOpen}
+				onOpenChange={setIsUnlockConfirmOpen}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Unlock predictions?</AlertDialogTitle>
+						<AlertDialogDescription>
+							Players will be able to join and submit again. Only possible when
+							no answers have been marked yet.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel className="w-full sm:w-auto">
+							Keep locked
+						</AlertDialogCancel>
+						<AlertDialogAction
+							className="w-full sm:w-auto"
+							onClick={handleUnlockPredictions}
+							disabled={isUnlocking}
+						>
+							{isUnlocking ? "Unlocking..." : "Unlock predictions"}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
