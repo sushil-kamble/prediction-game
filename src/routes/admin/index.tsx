@@ -2,7 +2,7 @@ import { startTransition, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { Plus, ShieldAlert } from "lucide-react";
+import { Plus } from "lucide-react";
 import { ChallengeCard } from "#/components/app/challenge-card";
 import {
 	BottomSheet,
@@ -136,7 +136,7 @@ function AdminHomeRoute() {
 		<>
 			<PageShell className="gap-8 py-8 sm:py-12">
 				<div className="border-4 border-white bg-black p-6 sm:p-10">
-					<div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+					<div>
 						<div>
 							<div className="inline-block bg-primary text-black font-bold uppercase tracking-widest px-3 py-1 text-xs mb-4">
 								ADMIN MODE
@@ -149,15 +149,6 @@ function AdminHomeRoute() {
 							<p className="max-w-xl text-lg leading-relaxed text-zinc-300 font-medium">
 								Create prediction questions, publish the challenge,
 								and score results live.
-							</p>
-						</div>
-						<div className="border-2 border-zinc-800 bg-zinc-950 p-5 max-w-sm">
-							<div className="flex items-center gap-3 text-white mb-3">
-								<ShieldAlert className="h-6 w-6 text-primary" />
-								<span className="font-bold uppercase tracking-wider text-sm">DEVICE LOCKED ADMIN</span>
-							</div>
-							<p className="text-sm leading-relaxed text-zinc-400 font-medium m-0">
-								Secrets live in local storage. Switch browsers and you lose edit access. Proceed with caution.
 							</p>
 						</div>
 					</div>
