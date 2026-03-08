@@ -50,8 +50,9 @@ pnpm check
 
 ## Setting up Convex
 
-- Set the `VITE_CONVEX_URL` and `CONVEX_DEPLOYMENT` environment variables in your `.env.local`. (Or run `pnpm dlx convex init` to set them automatically.)
-- Run `pnpm dlx convex dev` to start the Convex server.
+- Use `.env.local` for local development. This repo currently points local dev at the Convex dev deployment.
+- Use `.env.production.local` for production builds and deploys. Vite loads that file for production mode, and it stays out of Git while still overriding the dev URL from `.env.local`.
+- Run `pnpm dlx convex dev` to start the Convex dev server locally.
 
 ## Shadcn
 
