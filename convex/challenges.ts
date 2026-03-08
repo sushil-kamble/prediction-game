@@ -234,7 +234,7 @@ function logMutationError(
 			? { message: error.message, stack: error.stack }
 			: { message: String(error) };
 
-	console.error("PredictGame mutation failed", {
+	console.error("SushilGames prediction mutation failed", {
 		mutationName,
 		challengeId,
 		input: sanitizeLogValue(args),
@@ -244,7 +244,7 @@ function logMutationError(
 
 async function requireChallenge(
 	ctx: ReadCtx,
-	challengeId: Id<"challenges">,
+	challengeId: Id<"prediction_challenges">,
 ) {
 	const challenge = await ctx.db.get(challengeId);
 	if (!challenge) {
@@ -255,7 +255,7 @@ async function requireChallenge(
 
 async function requireQuestion(
 	ctx: ReadCtx,
-	questionId: Id<"questions">,
+	questionId: Id<"prediction_questions">,
 ) {
 	const question = await ctx.db.get(questionId);
 	if (!question) {
@@ -266,7 +266,7 @@ async function requireQuestion(
 
 async function requireParticipant(
 	ctx: ReadCtx,
-	participantId: Id<"participants">,
+	participantId: Id<"prediction_participants">,
 ) {
 	const participant = await ctx.db.get(participantId);
 	if (!participant) {
@@ -277,7 +277,7 @@ async function requireParticipant(
 
 async function requireAdminChallenge(
 	ctx: ReadCtx,
-	challengeId: Id<"challenges">,
+	challengeId: Id<"prediction_challenges">,
 	adminSecret: string,
 ) {
 	const challenge = await requireChallenge(ctx, challengeId);
@@ -291,17 +291,17 @@ async function requireAdminChallenge(
 
 async function listChallengeQuestions(
 	ctx: ReadCtx,
-	challengeId: Id<"challenges">,
-): Promise<Array<Doc<"questions">>> {
+	challengeId: Id<"prediction_challenges">,
+): Promise<Array<Doc<"prediction_questions">>> {
 	return await ctx.db
-		.query("questions")
+		.query("prediction_questions")
 		.withIndex("by_challenge_order", (q) => q.eq("challengeId", challengeId))
 		.collect();
 }
 
 function ensureQuestionInChallenge(
-	question: Doc<"questions">,
-	challengeId: Id<"challenges">,
+	question: Doc<"prediction_questions">,
+	challengeId: Id<"prediction_challenges">,
 ) {
 	if (question.challengeId !== challengeId) {
 		throw new Error("Question does not belong to this challenge.");
@@ -309,8 +309,8 @@ function ensureQuestionInChallenge(
 }
 
 function ensureParticipantInChallenge(
-	participant: Doc<"participants">,
-	challengeId: Id<"challenges">,
+	participant: Doc<"prediction_participants">,
+	challengeId: Id<"prediction_challenges">,
 ) {
 	if (participant.challengeId !== challengeId) {
 		throw new Error("Participant does not belong to this challenge.");
@@ -323,11 +323,11 @@ function ensureOptionIndex(index: number, options: string[], fieldName: string) 
 	}
 }
 
-function isQuestionEditingUnlocked(challenge: Doc<"challenges">) {
+function isQuestionEditingUnlocked(challenge: Doc<"prediction_challenges">) {
 	return challenge.questionEditUnlocked ?? challenge.status === "draft";
 }
 
-function serializePublicQuestion(question: Doc<"questions">) {
+function serializePublicQuestion(question: Doc<"prediction_questions">) {
 	return {
 		_id: question._id,
 		text: question.text,
@@ -337,8 +337,8 @@ function serializePublicQuestion(question: Doc<"questions">) {
 }
 
 function serializePublicChallenge(
-	challenge: Doc<"challenges">,
-	questions: Array<Doc<"questions">>,
+	challenge: Doc<"prediction_challenges">,
+	questions: Array<Doc<"prediction_questions">>,
 ) {
 	return {
 		_id: challenge._id,
@@ -351,8 +351,8 @@ function serializePublicChallenge(
 }
 
 function serializeAdminChallenge(
-	challenge: Doc<"challenges">,
-	questions: Array<Doc<"questions">>,
+	challenge: Doc<"prediction_challenges">,
+	questions: Array<Doc<"prediction_questions">>,
 ) {
 	return {
 		_id: challenge._id,
@@ -365,7 +365,7 @@ function serializeAdminChallenge(
 	};
 }
 
-function serializeParticipantIdentity(participant: Doc<"participants">) {
+function serializeParticipantIdentity(participant: Doc<"prediction_participants">) {
 	return {
 		_id: participant._id,
 		nickname: participant.nickname,
@@ -373,7 +373,7 @@ function serializeParticipantIdentity(participant: Doc<"participants">) {
 }
 
 function ensureChallengeOpenForPredictions(
-	challenge: Doc<"challenges">,
+	challenge: Doc<"prediction_challenges">,
 	action: "join" | "submit",
 ) {
 	if (challenge.status === "draft") {
@@ -395,10 +395,10 @@ function ensureChallengeOpenForPredictions(
 
 async function hasChallengeSubmissions(
 	ctx: ReadCtx,
-	challengeId: Id<"challenges">,
+	challengeId: Id<"prediction_challenges">,
 ) {
 	const prediction = await ctx.db
-		.query("predictions")
+		.query("prediction_predictions")
 		.withIndex("by_challenge", (q) => q.eq("challengeId", challengeId))
 		.first();
 
@@ -407,7 +407,7 @@ async function hasChallengeSubmissions(
 
 async function ensureQuestionSetMutable(
 	ctx: ReadCtx,
-	challengeId: Id<"challenges">,
+	challengeId: Id<"prediction_challenges">,
 ) {
 	if (await hasChallengeSubmissions(ctx, challengeId)) {
 		throw new Error(
@@ -417,14 +417,14 @@ async function ensureQuestionSetMutable(
 }
 
 async function ensureWinnerMessagesSeeded(ctx: MutationCtx) {
-	const existing = await ctx.db.query("winnerMessages").first();
+	const existing = await ctx.db.query("prediction_winnerMessages").first();
 	if (existing) {
 		return;
 	}
 
 	await Promise.all(
 		DEFAULT_WINNER_MESSAGES.map((message) =>
-			ctx.db.insert("winnerMessages", {
+			ctx.db.insert("prediction_winnerMessages", {
 				medal: message.medal,
 				sportKey: message.sportKey ?? undefined,
 				order: message.order,
@@ -437,12 +437,12 @@ async function ensureWinnerMessagesSeeded(ctx: MutationCtx) {
 
 async function findParticipantByUuid(
 	ctx: ReadCtx,
-	challengeId: Id<"challenges">,
+	challengeId: Id<"prediction_challenges">,
 	uuid: string,
 ) {
 	const normalizedUuid = requireTrimmed(uuid, "UUID");
 	const directParticipant = await ctx.db
-		.query("participants")
+		.query("prediction_participants")
 		.withIndex("by_challenge_uuid", (q) =>
 			q.eq("challengeId", challengeId).eq("uuid", normalizedUuid),
 		)
@@ -453,7 +453,7 @@ async function findParticipantByUuid(
 	}
 
 	const deviceLink = await ctx.db
-		.query("participantDevices")
+		.query("prediction_participantDevices")
 		.withIndex("by_challenge_uuid", (q) =>
 			q.eq("challengeId", challengeId).eq("uuid", normalizedUuid),
 		)
@@ -473,12 +473,12 @@ async function findParticipantByUuid(
 
 async function requireParticipantByUsername(
 	ctx: ReadCtx,
-	challengeId: Id<"challenges">,
+	challengeId: Id<"prediction_challenges">,
 	username: string,
 ) {
 	const usernameLower = normalizeComparableValue(requireTrimmed(username, "Username"));
 	const participant = await ctx.db
-		.query("participants")
+		.query("prediction_participants")
 		.withIndex("by_challenge_username", (q) =>
 			q.eq("challengeId", challengeId).eq("usernameLower", usernameLower),
 		)
@@ -493,8 +493,8 @@ async function requireParticipantByUsername(
 
 async function linkDeviceToParticipant(
 	ctx: MutationCtx,
-	challengeId: Id<"challenges">,
-	participant: Doc<"participants">,
+	challengeId: Id<"prediction_challenges">,
+	participant: Doc<"prediction_participants">,
 	uuid: string,
 ) {
 	const normalizedUuid = requireTrimmed(uuid, "UUID");
@@ -504,7 +504,7 @@ async function linkDeviceToParticipant(
 	}
 
 	const existingDeviceLink = await ctx.db
-		.query("participantDevices")
+		.query("prediction_participantDevices")
 		.withIndex("by_challenge_uuid", (q) =>
 			q.eq("challengeId", challengeId).eq("uuid", normalizedUuid),
 		)
@@ -518,7 +518,7 @@ async function linkDeviceToParticipant(
 		throw new Error("That device is already linked to another player.");
 	}
 
-	await ctx.db.insert("participantDevices", {
+	await ctx.db.insert("prediction_participantDevices", {
 		challengeId,
 		participantId: participant._id,
 		uuid: normalizedUuid,
@@ -535,21 +535,21 @@ function getSubmittedParticipantIds(rows: Array<{ participantId: string; submitt
 
 async function buildChallengeLeaderboard(
 	ctx: ReadCtx,
-	challengeId: Id<"challenges">,
+	challengeId: Id<"prediction_challenges">,
 	options?: { uuid?: string },
 ) {
 	const challenge = await requireChallenge(ctx, challengeId);
 	const [participants, questions, predictions, winnerMessages] = await Promise.all([
 		ctx.db
-			.query("participants")
+			.query("prediction_participants")
 			.withIndex("by_challenge", (q) => q.eq("challengeId", challengeId))
 			.collect(),
 		listChallengeQuestions(ctx, challengeId),
 		ctx.db
-			.query("predictions")
+			.query("prediction_predictions")
 			.withIndex("by_challenge", (q) => q.eq("challengeId", challengeId))
 			.collect(),
-		ctx.db.query("winnerMessages").collect(),
+		ctx.db.query("prediction_winnerMessages").collect(),
 	]);
 
 	const rows = buildLeaderboardRows({
@@ -670,7 +670,7 @@ export const createChallenge = mutation({
 		sport: v.string(),
 	},
 	returns: v.object({
-		challengeId: v.id("challenges"),
+		challengeId: v.id("prediction_challenges"),
 		adminSecret: v.string(),
 		status: challengeStatus,
 		title: v.string(),
@@ -683,7 +683,7 @@ export const createChallenge = mutation({
 			const adminSecret = generateAdminSecret();
 			const status = "draft" as const;
 
-			const challengeId = await ctx.db.insert("challenges", {
+			const challengeId = await ctx.db.insert("prediction_challenges", {
 				title,
 				sport,
 				status,
@@ -716,7 +716,7 @@ export const addQuestion = mutation({
 	},
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
 			if (!challengeId) {
 				throw new Error("Challenge not found.");
 			}
@@ -737,7 +737,7 @@ export const addQuestion = mutation({
 			await ensureQuestionSetMutable(ctx, challengeId);
 
 			const existingQuestions = await listChallengeQuestions(ctx, challengeId);
-			return await ctx.db.insert("questions", {
+			return await ctx.db.insert("prediction_questions", {
 				challengeId,
 				text: requireTrimmed(args.text, "Question text"),
 				options: validateOptions(args.options),
@@ -763,8 +763,8 @@ export const updateQuestion = mutation({
 	},
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
-			const questionId = ctx.db.normalizeId("questions", args.questionId);
+			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
+			const questionId = ctx.db.normalizeId("prediction_questions", args.questionId);
 
 			if (!challengeId || !questionId) {
 				throw new Error("Question not found.");
@@ -808,8 +808,8 @@ export const deleteQuestion = mutation({
 	},
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
-			const questionId = ctx.db.normalizeId("questions", args.questionId);
+			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
+			const questionId = ctx.db.normalizeId("prediction_questions", args.questionId);
 
 			if (!challengeId || !questionId) {
 				throw new Error("Question not found.");
@@ -837,7 +837,7 @@ export const deleteQuestion = mutation({
 
 			const remainingQuestions = await listChallengeQuestions(ctx, challengeId);
 			await Promise.all(
-				remainingQuestions.map((item: Doc<"questions">, index: number) =>
+				remainingQuestions.map((item: Doc<"prediction_questions">, index: number) =>
 					item.order === index
 						? Promise.resolve()
 						: ctx.db.patch(item._id, { order: index }),
@@ -857,7 +857,7 @@ export const publishChallenge = mutation({
 	},
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
 			if (!challengeId) {
 				throw new Error("Challenge not found.");
 			}
@@ -899,7 +899,7 @@ export const unpublishChallenge = mutation({
 	},
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
 			if (!challengeId) {
 				throw new Error("Challenge not found.");
 			}
@@ -932,10 +932,10 @@ export const joinChallenge = mutation({
 		nickname: v.string(),
 		username: v.optional(v.string()),
 	},
-	returns: v.id("participants"),
+	returns: v.id("prediction_participants"),
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
 			if (!challengeId) {
 				throw new Error("Challenge not found.");
 			}
@@ -957,7 +957,7 @@ export const joinChallenge = mutation({
 
 			if (usernameLower) {
 				const existingUsername = await ctx.db
-					.query("participants")
+					.query("prediction_participants")
 					.withIndex("by_challenge_username", (q) =>
 						q.eq("challengeId", challengeId).eq("usernameLower", usernameLower),
 					)
@@ -968,7 +968,7 @@ export const joinChallenge = mutation({
 				}
 			}
 
-			return await ctx.db.insert("participants", {
+			return await ctx.db.insert("prediction_participants", {
 				challengeId,
 				uuid,
 				nickname,
@@ -990,12 +990,12 @@ export const recoverParticipantByUsername = mutation({
 		username: v.string(),
 	},
 	returns: v.object({
-		participantId: v.id("participants"),
+		participantId: v.id("prediction_participants"),
 		nickname: v.string(),
 	}),
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
 			if (!challengeId) {
 				throw new Error("Challenge not found.");
 			}
@@ -1038,9 +1038,9 @@ export const submitPredictions = mutation({
 	},
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
 			const participantId = ctx.db.normalizeId(
-				"participants",
+				"prediction_participants",
 				args.participantId,
 			);
 
@@ -1064,7 +1064,7 @@ export const submitPredictions = mutation({
 			}
 
 			const existingPrediction = await ctx.db
-				.query("predictions")
+				.query("prediction_predictions")
 				.withIndex("by_participant", (q) => q.eq("participantId", participantId))
 				.first();
 			if (existingPrediction) {
@@ -1080,13 +1080,13 @@ export const submitPredictions = mutation({
 				throw new Error("Submit one prediction for every question.");
 			}
 
-			const questionMap = new Map<Id<"questions">, Doc<"questions">>(
-				questions.map((question: Doc<"questions">) => [question._id, question]),
+			const questionMap = new Map<Id<"prediction_questions">, Doc<"prediction_questions">>(
+				questions.map((question: Doc<"prediction_questions">) => [question._id, question]),
 			);
 			const seenQuestionIds = new Set<string>();
 
 			for (const prediction of args.predictions) {
-				const questionId = ctx.db.normalizeId("questions", prediction.questionId);
+				const questionId = ctx.db.normalizeId("prediction_questions", prediction.questionId);
 				if (!questionId) {
 					throw new Error("One or more selected questions are invalid.");
 				}
@@ -1120,14 +1120,14 @@ export const submitPredictions = mutation({
 				args.predictions.map(
 					async (prediction: typeof args.predictions[number]) => {
 						const questionId = ctx.db.normalizeId(
-							"questions",
+							"prediction_questions",
 							prediction.questionId,
 						);
 						if (!questionId) {
 							throw new Error("One or more selected questions are invalid.");
 						}
 
-						await ctx.db.insert("predictions", {
+						await ctx.db.insert("prediction_predictions", {
 							participantId,
 							questionId,
 							challengeId,
@@ -1154,8 +1154,8 @@ export const markCorrectAnswer = mutation({
 	},
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
-			const questionId = ctx.db.normalizeId("questions", args.questionId);
+			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
+			const questionId = ctx.db.normalizeId("prediction_questions", args.questionId);
 
 			if (!challengeId || !questionId) {
 				throw new Error("Question not found.");
@@ -1202,7 +1202,7 @@ export const clearAnswerMarkings = mutation({
 	},
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
 			if (!challengeId) {
 				throw new Error("Challenge not found.");
 			}
@@ -1222,8 +1222,8 @@ export const clearAnswerMarkings = mutation({
 			const questions = await listChallengeQuestions(ctx, challengeId);
 			await Promise.all(
 				questions
-					.filter((question: Doc<"questions">) => question.correctOptionIndex !== null)
-					.map((question: Doc<"questions">) =>
+					.filter((question: Doc<"prediction_questions">) => question.correctOptionIndex !== null)
+					.map((question: Doc<"prediction_questions">) =>
 						ctx.db.patch(question._id, { correctOptionIndex: null }),
 					),
 			);
@@ -1244,12 +1244,12 @@ export const announceWinners = mutation({
 		adminSecret: v.string(),
 	},
 	returns: v.object({
-		winnerParticipantIds: v.array(v.id("participants")),
+		winnerParticipantIds: v.array(v.id("prediction_participants")),
 		announcedAt: v.number(),
 	}),
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
 			if (!challengeId) {
 				throw new Error("Challenge not found.");
 			}
@@ -1278,8 +1278,8 @@ export const announceWinners = mutation({
 			}
 
 			const winnerParticipantIds = getSubmittedParticipantIds(leaderboard.rows)
-				.map((participantId) => ctx.db.normalizeId("participants", participantId))
-				.filter((participantId): participantId is Id<"participants"> =>
+				.map((participantId) => ctx.db.normalizeId("prediction_participants", participantId))
+				.filter((participantId): participantId is Id<"prediction_participants"> =>
 					Boolean(participantId),
 				);
 
@@ -1314,7 +1314,7 @@ export const closeChallenge = mutation({
 	},
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
 			if (!challengeId) {
 				throw new Error("Challenge not found.");
 			}
@@ -1340,7 +1340,7 @@ export const getChallenge = query({
 		challengeId: v.string(),
 	},
 	handler: async (ctx, args) => {
-		const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+		const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
 		if (!challengeId) {
 			return null;
 		}
@@ -1361,12 +1361,12 @@ export const getAdminChallenge = query({
 		adminSecret: v.string(),
 	},
 	handler: async (ctx, args) => {
-		const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+		const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
 		if (!challengeId) {
 			return null;
 		}
 
-		let challenge: Doc<"challenges">;
+		let challenge: Doc<"prediction_challenges">;
 		try {
 			challenge = await requireAdminChallenge(
 				ctx,
@@ -1389,7 +1389,7 @@ export const getChallengeSummaries = query({
 	handler: async (ctx, args) => {
 		const summaries = await Promise.all(
 			args.challengeIds.map(async (challengeId) => {
-				const normalizedId = ctx.db.normalizeId("challenges", challengeId);
+				const normalizedId = ctx.db.normalizeId("prediction_challenges", challengeId);
 				if (!normalizedId) {
 					return null;
 				}
@@ -1419,7 +1419,7 @@ export const getParticipant = query({
 		uuid: v.string(),
 	},
 	handler: async (ctx, args) => {
-		const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+		const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
 		if (!challengeId) {
 			return null;
 		}
@@ -1436,8 +1436,8 @@ export const getParticipantPredictions = query({
 		uuid: v.string(),
 	},
 	handler: async (ctx, args) => {
-		const participantId = ctx.db.normalizeId("participants", args.participantId);
-		const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+		const participantId = ctx.db.normalizeId("prediction_participants", args.participantId);
+		const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
 
 		if (!participantId || !challengeId) {
 			return {};
@@ -1458,7 +1458,7 @@ export const getParticipantPredictions = query({
 		}
 
 		const predictions = await ctx.db
-			.query("predictions")
+			.query("prediction_predictions")
 			.withIndex("by_participant", (q) => q.eq("participantId", participantId))
 			.collect();
 
@@ -1483,7 +1483,7 @@ export const getLeaderboard = query({
 		uuid: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		const challengeId = ctx.db.normalizeId("challenges", args.challengeId);
+		const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
 		if (!challengeId) {
 			return null;
 		}

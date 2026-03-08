@@ -2,7 +2,7 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-	challenges: defineTable({
+	prediction_challenges: defineTable({
 		title: v.string(),
 		sport: v.string(),
 		status: v.union(
@@ -13,20 +13,22 @@ export default defineSchema({
 		),
 		questionEditUnlocked: v.optional(v.boolean()),
 		winnersAnnouncedAt: v.optional(v.number()),
-		winnerParticipantIds: v.optional(v.array(v.id("participants"))),
+		winnerParticipantIds: v.optional(
+			v.array(v.id("prediction_participants")),
+		),
 		adminSecret: v.string(),
 		createdAt: v.number(),
 	}),
-	questions: defineTable({
-		challengeId: v.id("challenges"),
+	prediction_questions: defineTable({
+		challengeId: v.id("prediction_challenges"),
 		text: v.string(),
 		options: v.array(v.string()),
 		pointValue: v.number(),
 		correctOptionIndex: v.union(v.number(), v.null()),
 		order: v.number(),
 	}).index("by_challenge_order", ["challengeId", "order"]),
-	participants: defineTable({
-		challengeId: v.id("challenges"),
+	prediction_participants: defineTable({
+		challengeId: v.id("prediction_challenges"),
 		uuid: v.string(),
 		nickname: v.string(),
 		username: v.optional(v.string()),
@@ -37,25 +39,25 @@ export default defineSchema({
 		.index("by_challenge", ["challengeId"])
 		.index("by_challenge_uuid", ["challengeId", "uuid"])
 		.index("by_challenge_username", ["challengeId", "usernameLower"]),
-	participantDevices: defineTable({
-		challengeId: v.id("challenges"),
-		participantId: v.id("participants"),
+	prediction_participantDevices: defineTable({
+		challengeId: v.id("prediction_challenges"),
+		participantId: v.id("prediction_participants"),
 		uuid: v.string(),
 		linkedAt: v.number(),
 	})
 		.index("by_challenge_uuid", ["challengeId", "uuid"])
 		.index("by_participant", ["participantId"]),
-	predictions: defineTable({
-		participantId: v.id("participants"),
-		questionId: v.id("questions"),
-		challengeId: v.id("challenges"),
+	prediction_predictions: defineTable({
+		participantId: v.id("prediction_participants"),
+		questionId: v.id("prediction_questions"),
+		challengeId: v.id("prediction_challenges"),
 		selectedOptionIndex: v.number(),
 		submittedAt: v.number(),
 	})
 		.index("by_participant", ["participantId"])
 		.index("by_challenge", ["challengeId"])
 		.index("by_participant_question", ["participantId", "questionId"]),
-	winnerMessages: defineTable({
+	prediction_winnerMessages: defineTable({
 		medal: v.union(
 			v.literal("gold"),
 			v.literal("silver"),

@@ -59,9 +59,9 @@ type AdminQuestion = {
 	order: number;
 };
 
-export const Route = createFileRoute("/admin/$challengeId")({
+export const Route = createFileRoute("/prediction/admin/$challengeId")({
 	head: ({ params }) => ({
-		meta: [{ title: `Admin ${params.challengeId} | PredictGame` }],
+		meta: [{ title: `Admin ${params.challengeId} | Sushil Games` }],
 	}),
 	component: AdminChallengeRoute,
 });
@@ -77,22 +77,22 @@ function handleRadioOptionKeyDown(
 		case "ArrowRight":
 			event.preventDefault();
 			onSelect((currentIndex + 1) % totalOptions);
-			return;
+			return
 		case "ArrowUp":
 		case "ArrowLeft":
 			event.preventDefault();
 			onSelect((currentIndex - 1 + totalOptions) % totalOptions);
-			return;
+			return
 		case "Home":
 			event.preventDefault();
 			onSelect(0);
-			return;
+			return
 		case "End":
 			event.preventDefault();
 			onSelect(totalOptions - 1);
-			return;
+			return
 		default:
-			return;
+			return
 	}
 }
 
@@ -110,13 +110,13 @@ function AdminChallengeRoute() {
 
 	const [adminSecret, setAdminSecret] = useState<string | null | undefined>(
 		undefined
-	);
+	)
 	const [questionText, setQuestionText] = useState("");
 	const [options, setOptions] = useState(["", ""]);
 	const [pointValue, setPointValue] = useState(1);
 	const [editingQuestionId, setEditingQuestionId] = useState<string | null>(
 		null
-	);
+	)
 	const [deleteTarget, setDeleteTarget] = useState<AdminQuestion | null>(null);
 	const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
 	const [isAnnounceConfirmOpen, setIsAnnounceConfirmOpen] = useState(false);
@@ -139,11 +139,11 @@ function AdminChallengeRoute() {
 					adminSecret,
 				}
 			: "skip"
-	);
+	)
 	const leaderboard = useQuery(
 		api.challenges.getLeaderboard,
 		adminSecret ? { challengeId } : "skip"
-	);
+	)
 
 	useEffect(() => {
 		setAdminSecret(getStoredAdminChallenge(challengeId)?.adminSecret ?? null);
@@ -164,16 +164,16 @@ function AdminChallengeRoute() {
 	const shareUrl =
 		typeof window !== "undefined"
 			? buildChallengeUrl(window.location.origin, challengeId)
-			: `/c/${challengeId}`;
+			: `/prediction/c/${challengeId}`;
 
 	const leaderboardUrl =
 		typeof window !== "undefined"
 			? buildLeaderboardUrl(window.location.origin, challengeId)
-			: `/c/${challengeId}/leaderboard`;
+			: `/prediction/c/${challengeId}/leaderboard`;
 
 	const answeredCount = challenge
 		? answeredCorrectCount(challenge.questions)
-		: 0;
+		: 0
 	const hasAdminAccess = Boolean(adminSecret);
 	const isQuestionEditUnlocked =
 		(challenge?.questionEditUnlocked ?? challenge?.status === "draft") &&
@@ -185,7 +185,7 @@ function AdminChallengeRoute() {
 				.slice()
 				.sort((a, b) => a.order - b.order) as Array<AdminQuestion>,
 		[challenge]
-	);
+	)
 	const isFormPristine =
 		!editingQuestionId &&
 		questionText.trim().length === 0 &&
@@ -204,12 +204,12 @@ function AdminChallengeRoute() {
 				description="This browser does not have the admin secret for this challenge. Open it from the device that created the challenge."
 			>
 				<Button asChild>
-					<Link to="/admin" className="no-underline">
+					<Link to="/prediction/admin" className="no-underline">
 						Back to admin
 					</Link>
 				</Button>
 			</FullScreenState>
-		);
+		)
 	}
 
 	if (challenge === undefined || leaderboard === undefined) {
@@ -223,12 +223,12 @@ function AdminChallengeRoute() {
 				description="This admin link doesn't map to a challenge on the current Convex deployment."
 			>
 				<Button asChild>
-					<Link to="/admin" className="no-underline">
+					<Link to="/prediction/admin" className="no-underline">
 						Back to admin
 					</Link>
 				</Button>
 			</FullScreenState>
-		);
+		)
 	}
 
 	const canAnnounceWinners =
@@ -245,28 +245,28 @@ function AdminChallengeRoute() {
 			showToast(
 				"Admin access is only available on the device that created this challenge.",
 				"error"
-			);
-			return;
+			)
+			return
 		}
 		if (challenge?.status === "closed") {
 			showToast("Challenge is closed. Questions cannot be edited.", "error");
-			return;
+			return
 		}
 		if (!isQuestionEditUnlocked) {
 			showToast("Questions are frozen. Unpublish to edit questions.", "error");
-			return;
+			return
 		}
 
 		const trimmedText = questionText.trim();
 		const trimmedOptions = options.map((option) => option.trim());
 		if (!trimmedText) {
 			showToast("Question text is required.", "error");
-			return;
+			return
 		}
 
 		if (trimmedOptions.some((option) => option.length === 0)) {
 			showToast("Every option needs text before saving.", "error");
-			return;
+			return
 		}
 
 		setIsSaving(true);
@@ -279,7 +279,7 @@ function AdminChallengeRoute() {
 					text: trimmedText,
 					options: trimmedOptions,
 					pointValue,
-				});
+				})
 				showToast("Question updated.", "success");
 			} else {
 				await addQuestion({
@@ -288,7 +288,7 @@ function AdminChallengeRoute() {
 					text: trimmedText,
 					options: trimmedOptions,
 					pointValue,
-				});
+				})
 				showToast("Question added.", "success");
 			}
 
@@ -305,8 +305,8 @@ function AdminChallengeRoute() {
 			showToast(
 				"This browser doesn't have admin access for the challenge.",
 				"error"
-			);
-			return;
+			)
+			return
 		}
 
 		const wasDraft = challenge?.status === "draft";
@@ -318,7 +318,7 @@ function AdminChallengeRoute() {
 					? "Challenge published and questions frozen."
 					: "Questions frozen.",
 				"success"
-			);
+			)
 		} catch (error) {
 			showToast(getErrorMessage(error), "error");
 		} finally {
@@ -331,8 +331,8 @@ function AdminChallengeRoute() {
 			showToast(
 				"This browser doesn't have admin access for the challenge.",
 				"error"
-			);
-			return;
+			)
+			return
 		}
 
 		setIsUnpublishing(true);
@@ -349,7 +349,7 @@ function AdminChallengeRoute() {
 
 	async function handleDeleteQuestion() {
 		if (!adminSecret || !deleteTarget) {
-			return;
+			return
 		}
 
 		try {
@@ -357,10 +357,10 @@ function AdminChallengeRoute() {
 				challengeId,
 				questionId: deleteTarget._id.toString(),
 				adminSecret,
-			});
+			})
 			showToast("Question deleted.", "success");
 			if (editingQuestionId === deleteTarget._id.toString()) {
-				resetForm();
+				resetForm()
 			}
 			setDeleteTarget(null);
 		} catch (error) {
@@ -373,9 +373,9 @@ function AdminChallengeRoute() {
 		try {
 			if (typeof navigator !== "undefined" && navigator.share) {
 				await navigator.share({
-					title: challenge?.title ?? "PredictGame",
+					title: challenge?.title ?? "Sushil Games",
 					url: shareUrl,
-				});
+				})
 			} else if (typeof navigator !== "undefined" && navigator.clipboard) {
 				await navigator.clipboard.writeText(shareUrl);
 				showToast("Link copied!", "success");
@@ -384,7 +384,7 @@ function AdminChallengeRoute() {
 			}
 		} catch (error) {
 			if (error instanceof Error && error.name === "AbortError") {
-				return;
+				return
 			}
 			showToast(getErrorMessage(error), "error");
 		} finally {
@@ -401,8 +401,8 @@ function AdminChallengeRoute() {
 			showToast(
 				"This browser doesn't have admin access for the challenge.",
 				"error"
-			);
-			return;
+			)
+			return
 		}
 
 		try {
@@ -411,7 +411,7 @@ function AdminChallengeRoute() {
 				questionId: questionIdToScore,
 				adminSecret,
 				correctOptionIndex: optionIndex,
-			});
+			})
 		} catch (error) {
 			showToast(getErrorMessage(error), "error");
 		}
@@ -419,7 +419,7 @@ function AdminChallengeRoute() {
 
 	async function handleAnnounceWinners() {
 		if (!adminSecret) {
-			return;
+			return
 		}
 
 		setIsAnnouncing(true);
@@ -439,8 +439,8 @@ function AdminChallengeRoute() {
 			showToast(
 				"This browser doesn't have admin access for the challenge.",
 				"error"
-			);
-			return;
+			)
+			return
 		}
 
 		setIsClearingMarkings(true);
@@ -480,7 +480,7 @@ function AdminChallengeRoute() {
 				<GlassCard className="px-5 py-6 sm:px-8">
 					<div className="flex flex-wrap items-center gap-3">
 						<Button variant="outline" size="sm" asChild>
-							<Link to="/admin" className="no-underline">
+							<Link to="/prediction/admin" className="no-underline">
 								<ArrowLeft className="h-4 w-4" />
 								Back
 							</Link>
@@ -769,7 +769,7 @@ function AdminChallengeRoute() {
 						</div>
 						<Button variant="outline" asChild>
 							<Link
-								to="/c/$challengeId/leaderboard"
+								to="/prediction/c/$challengeId/leaderboard"
 								params={{ challengeId }}
 								className="no-underline"
 							>
@@ -1125,7 +1125,7 @@ function AdminChallengeRoute() {
 				</AlertDialogContent>
 			</AlertDialog>
 		</>
-	);
+	)
 }
 
 function AdminChallengeSkeleton() {
@@ -1135,7 +1135,7 @@ function AdminChallengeSkeleton() {
 			<SkeletonBlock className="h-96" />
 			<SkeletonBlock className="h-80" />
 		</PageShell>
-	);
+	)
 }
 
 function getErrorMessage(error: unknown) {

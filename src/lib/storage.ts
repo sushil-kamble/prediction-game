@@ -5,9 +5,9 @@ export type StoredAdminChallenge = {
 	sport: string;
 };
 
-const ADMIN_CHALLENGES_KEY = "adminChallenges";
-const UUID_KEY = "pguid";
-const ADMIN_CHALLENGES_EVENT = "pg:admin-challenges";
+const ADMIN_CHALLENGES_KEY = "prediction:adminChallenges";
+const UUID_KEY = "sg:uuid";
+const ADMIN_CHALLENGES_EVENT = "prediction:admin-challenges";
 const EMPTY_ADMIN_CHALLENGES: StoredAdminChallenge[] = [];
 
 let memoryUuid: string | null = null;
@@ -150,11 +150,11 @@ export function getStoredAdminChallenge(challengeId: string) {
 }
 
 export function getParticipantStorageKey(challengeId: string) {
-	return `participant_${challengeId}`;
+	return `prediction:participant:${challengeId}`;
 }
 
 export function getPredictionDraftKey(challengeId: string) {
-	return `prediction_draft_${challengeId}`;
+	return `prediction:draft:${challengeId}`;
 }
 
 export function getStoredParticipantId(challengeId: string) {

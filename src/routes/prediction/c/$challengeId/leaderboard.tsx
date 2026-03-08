@@ -21,9 +21,9 @@ import { cn } from "#/lib/utils";
 import { useClientUUID } from "#/lib/use-client-uuid";
 import { getStoredParticipantId } from "#/lib/storage";
 
-export const Route = createFileRoute("/c/$challengeId/leaderboard")({
+export const Route = createFileRoute("/prediction/c/$challengeId/leaderboard")({
 	head: () => ({
-		meta: [{ title: "Leaderboard | PredictGame" }],
+		meta: [{ title: "Leaderboard | Sushil Games" }],
 	}),
 	component: LeaderboardRoute,
 });
@@ -35,11 +35,11 @@ function LeaderboardRoute() {
 	const leaderboard = useQuery(api.challenges.getLeaderboard, {
 		challengeId,
 		uuid: uuid ?? undefined,
-	});
+	})
 	const participant = useQuery(
 		api.challenges.getParticipant,
 		uuid ? { challengeId, uuid } : "skip"
-	);
+	)
 
 	const [storedParticipantId, setStoredParticipantId] = useState<
 		string | null | undefined
@@ -64,7 +64,7 @@ function LeaderboardRoute() {
 		participantId && uuid
 			? { challengeId, participantId, uuid }
 			: "skip"
-	);
+	)
 
 	const hasSubmitted =
 		participantPredictions !== undefined &&
@@ -86,7 +86,7 @@ function LeaderboardRoute() {
 				title="Leaderboard unavailable"
 				description="This challenge couldn't be found."
 			/>
-		);
+		)
 	}
 
 	const remainingRows = leaderboard.rows.filter((row) => row.medal === null);
@@ -122,7 +122,7 @@ function LeaderboardRoute() {
 					</div>
 					<Button variant="outline" asChild className="w-full sm:w-auto">
 						<Link
-							to="/c/$challengeId"
+							to="/prediction/c/$challengeId"
 							params={{ challengeId }}
 							className="no-underline"
 						>
@@ -148,7 +148,7 @@ function LeaderboardRoute() {
 					<div className="mt-4">
 						<Button variant="outline" size="sm" asChild>
 							<Link
-								to="/c/$challengeId"
+								to="/prediction/c/$challengeId"
 								params={{ challengeId }}
 								className="no-underline"
 							>
@@ -241,7 +241,7 @@ function LeaderboardRoute() {
 												</div>
 											</div>
 										</div>
-									);
+									)
 								})
 							)}
 						</div>
@@ -249,7 +249,7 @@ function LeaderboardRoute() {
 				</>
 			)}
 		</PageShell>
-	);
+	)
 }
 
 function LeaderboardSkeleton() {
@@ -259,5 +259,5 @@ function LeaderboardSkeleton() {
 			<SkeletonBlock className="h-24" />
 			<SkeletonBlock className="h-96" />
 		</PageShell>
-	);
+	)
 }

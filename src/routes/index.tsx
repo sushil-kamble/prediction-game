@@ -1,238 +1,168 @@
-import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "convex/react";
-import { ArrowRight, Sparkles, Trophy, Zap } from "lucide-react";
-import { ChallengeCard } from "#/components/app/challenge-card";
-import { PageShell, SkeletonBlock } from "#/components/app/ui";
-import { Button } from "#/components/ui/button";
-import { api } from "#/lib/api";
-import { type ChallengeStatus, getSportEmoji } from "#/lib/challenge";
-import { type StoredAdminChallenge } from "#/lib/storage";
-import { useStoredAdminChallenges } from "#/lib/use-stored-admin-challenges";
-
-type ChallengeSummary = {
-	challengeId: string;
-	title: string;
-	sport: string;
-	status: ChallengeStatus;
-	createdAt: number;
-};
+import {
+	ArrowUpRight,
+	Crosshair,
+	Gamepad2,
+	Sparkles,
+	Trophy,
+	Zap,
+} from "lucide-react";
+import { PageShell } from "#/components/app/ui";
 
 export const Route = createFileRoute("/")({
 	head: () => ({
 		meta: [
 			{
-				title: "PredictGame | Live prediction challenges",
+				title: "The Game Hub | Compete & Win",
 			},
 		],
 	}),
-	component: HomeRoute,
+	component: GamesHubRoute,
 });
 
-function HomeRoute() {
-	const storedChallenges = useStoredAdminChallenges() as StoredAdminChallenge[];
-
-	const challengeIds = storedChallenges.map(
-		(challenge) => challenge.challengeId
-	);
-	const summaries = useQuery(
-		api.challenges.getChallengeSummaries,
-		challengeIds.length ? { challengeIds } : "skip"
-	);
-
-	const mergedChallenges = useMemo(() => {
-		const summaryMap = new Map(
-			(summaries ?? [])
-				.filter((summary): summary is NonNullable<typeof summary> =>
-					Boolean(summary)
-				)
-				.map((summary) => [summary.challengeId.toString(), summary])
-		);
-
-		return storedChallenges.map((challenge) => {
-			const liveSummary = summaryMap.get(challenge.challengeId);
-
-			return {
-				challengeId: challenge.challengeId,
-				title: liveSummary?.title ?? challenge.title,
-				sport: liveSummary?.sport ?? challenge.sport,
-				status: (liveSummary?.status ?? "draft") as ChallengeStatus,
-				createdAt: liveSummary?.createdAt ?? 0,
-			} satisfies ChallengeSummary;
-		});
-	}, [storedChallenges, summaries]);
-
+function GamesHubRoute() {
 	return (
-		<PageShell className="gap-8 py-8 sm:py-16">
-			{/* Hero */}
-			<div className="relative border-4 border-white bg-black p-6 shadow-[12px_12px_0px_0px_#ccff00] sm:p-12">
-				<div className="bg-primary absolute top-0 right-0 border-b-4 border-l-4 border-white px-4 py-1 text-xs font-bold tracking-widest text-black">
-					V1.0.0
-				</div>
-				<div className="grid gap-12 lg:grid-cols-[1.2fr_0.8fr]">
-					<div className="flex flex-col justify-center">
-						<div className="mb-6 inline-block w-max border-2 border-black bg-white px-3 py-1 text-xs font-bold tracking-widest text-black uppercase">
-							Live Sports Picks
-						</div>
-						<h1 className="font-display mb-8 text-[3.5rem] leading-[0.9] text-white uppercase sm:text-[6rem]">
-							One Link.
-							<br />
-							<span
-								className="text-primary"
-								style={{ textShadow: "4px 4px 0 #fff" }}
-							>
-								One Shot.
-							</span>
-							<br />
-							Live Ranks.
-						</h1>
-						<p className="border-primary mt-2 max-w-xl border-l-4 pl-4 text-lg leading-relaxed font-medium text-zinc-300 sm:text-xl">
-							PredictGame is a brutal, high-contrast sports challenge builder
-							for match-day crowds. Create a stack of prediction questions,
-							share the link, and watch the leaderboard burn up in real time.
-						</p>
-						<div className="mt-10 flex flex-col gap-4 sm:flex-row">
-							<Button size="lg" asChild>
-								<Link to="/admin" className="no-underline">
-									START CHALLENGE
-									<ArrowRight className="ml-2 h-5 w-5" />
-								</Link>
-							</Button>
-							<Button variant="outline" size="lg" asChild>
-								<a href="#my-challenges" className="no-underline">
-									LOCAL ADMIN
-								</a>
-							</Button>
-						</div>
-					</div>
-
-					<div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-						{[
-							{
-								title: "MOBILE FIRST",
-								description:
-									"Massive targets. Sticky actions. Built for thumbs.",
-								icon: <Zap className="h-6 w-6 text-black" />,
-							},
-							{
-								title: "REAL-TIME",
-								description:
-									"Scoring changes reorder the board instantly. No delays.",
-								icon: <Trophy className="h-6 w-6 text-black" />,
-							},
-							{
-								title: "SHARE READY",
-								description:
-									"Clean links. Sharp previews. Ready for group chats.",
-								icon: <Sparkles className="h-6 w-6 text-black" />,
-							},
-						].map((item) => (
+		<PageShell className="mx-auto max-w-6xl gap-16 py-12 sm:py-24">
+			{/* Hero Section */}
+			<div className="relative isolate">
+				{/* Decorative background elements */}
+				<div className="absolute -inset-x-4 -inset-y-8 -z-10 bg-[radial-gradient(ellipse_80%_80%_at_50%_0%,rgba(204,255,0,0.15),transparent)]" />
+				<div className="absolute top-0 right-10 -z-10 hidden opacity-20 md:block">
+					<div className="grid grid-cols-6 gap-2">
+						{Array.from({ length: 36 }).map((_, i) => (
 							<div
-								key={item.title}
-								className="border-2 border-white bg-zinc-900 p-5 transition-colors hover:bg-zinc-800"
-							>
-								<div className="bg-primary mb-4 flex h-12 w-12 items-center justify-center border-2 border-white shadow-[2px_2px_0px_0px_#fff]">
-									{item.icon}
-								</div>
-								<h2 className="mb-2 text-lg font-bold tracking-wider text-white uppercase">
-									{item.title}
-								</h2>
-								<p className="text-sm leading-relaxed font-medium text-zinc-400">
-									{item.description}
-								</p>
-							</div>
+								key={`dot-${i}`}
+								className="bg-primary h-1.5 w-1.5 rounded-full"
+							/>
 						))}
 					</div>
 				</div>
+
+				<div className="relative flex flex-col items-start gap-6">
+					<div className="border-primary/30 bg-primary/10 text-primary inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold tracking-[0.2em] uppercase backdrop-blur-sm">
+						<Sparkles className="h-3.5 w-3.5" />
+						<span>The Game Hub</span>
+					</div>
+
+					<h1 className="font-display text-[4rem] leading-[0.85] tracking-tight text-white uppercase sm:text-[6.5rem] md:text-[8rem]">
+						Play. <br />
+						<span className="from-primary bg-gradient-to-r via-[#e6ff66] to-white bg-clip-text text-transparent">
+							Dominate.
+						</span>
+					</h1>
+
+					<p className="mt-4 max-w-xl text-lg leading-relaxed font-medium text-zinc-400 sm:text-xl">
+						Step into the arena. A curated collection of competitive experiences
+						designed to turn match days into battlegrounds and friends into
+						rivals.
+					</p>
+				</div>
 			</div>
 
-			{/* My Challenges */}
-			<div className="relative mt-8 border-2 border-zinc-800 bg-black p-6 sm:p-10">
-				<div className="mb-8 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-					<div id="my-challenges">
-						<div className="text-primary mb-2 text-sm font-bold tracking-widest uppercase">
-							My Challenges
-						</div>
-						<h2 className="font-display text-4xl text-white uppercase sm:text-5xl">
-							LOCAL ADMIN
+			{/* Divider */}
+			<div className="from-primary/50 h-px w-full bg-gradient-to-r via-zinc-800 to-transparent" />
+
+			{/* Games Grid Section */}
+			<div className="flex flex-col gap-10">
+				<div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+					<div>
+						<h2 className="font-display flex items-center gap-3 text-4xl tracking-tight text-white uppercase sm:text-5xl">
+							<Zap className="text-primary fill-primary/20 h-8 w-8" />
+							Active Arenas
 						</h2>
-						<p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-400">
-							Admin access is stored locally. Open any saved card to continue
-							editing, share the link, or score results live.
+						<p className="mt-2 text-sm font-medium tracking-wide text-zinc-500 uppercase">
+							Select your proving ground
 						</p>
 					</div>
-					<Button variant="secondary" asChild>
-						<Link to="/admin" className="no-underline">
-							OPEN ADMIN
-						</Link>
-					</Button>
 				</div>
 
-				<div className="grid gap-6">
-					{storedChallenges.length === 0 ? (
-						<div className="flex flex-col items-center border-2 border-dashed border-zinc-700 bg-zinc-950 p-10 text-center">
-							<p className="mb-6 max-w-md text-lg font-medium text-zinc-400">
-								NO LOCAL ADMIN CARDS YET. START A FRESH MATCH.
-							</p>
-							<Button asChild>
-								<Link to="/admin" className="no-underline">
-									CREATE NOW
-								</Link>
-							</Button>
-						</div>
-					) : summaries === undefined ? (
-						Array.from({ length: storedChallenges.length }).map((_, index) => (
-							<SkeletonBlock
-								key={index}
-								className="h-34 border-2 border-zinc-800 bg-zinc-900"
-							/>
-						))
-					) : (
-						mergedChallenges.map((challenge) => (
-							<ChallengeCard
-								key={challenge.challengeId}
-								challengeId={challenge.challengeId}
-								title={challenge.title}
-								sport={challenge.sport}
-								status={challenge.status}
-								to="/admin/$challengeId"
-							/>
-						))
-					)}
-				</div>
-			</div>
+				<div className="grid gap-8 lg:grid-cols-2">
+					{/* Prediction Game Card */}
+					<Link
+						to="/prediction"
+						className="group relative block no-underline outline-none"
+					>
+						{/* Card Background / Shadow layer */}
+						<div className="bg-primary absolute inset-0 translate-x-2 translate-y-2 transition-transform duration-300 ease-out group-hover:translate-x-3 group-hover:translate-y-3 group-focus-visible:translate-x-3 group-focus-visible:translate-y-3" />
 
-			{/* Sports Grid */}
-			<div className="mt-8 grid gap-6 sm:grid-cols-[1fr_1.5fr]">
-				<div className="border-primary bg-primary border-2 p-8 text-black shadow-[8px_8px_0px_0px_rgba(255,255,255,0.2)]">
-					<p className="mb-4 text-sm font-extrabold tracking-[0.2em] uppercase">
-						THEME // AESTHETIC
-					</p>
-					<h3 className="font-display mb-6 text-4xl leading-tight uppercase">
-						BUILT FOR GAME DAY
-					</h3>
-					<p className="text-base leading-relaxed font-bold">
-						High contrast. Massive typography. Unapologetic design. Keep the
-						action readable on any screen, even in direct sunlight.
-					</p>
-				</div>
-				<div className="grid gap-4 sm:grid-cols-2">
-					{["Cricket", "Football", "F1", "Basketball"].map((sport) => (
-						<div
-							key={sport}
-							className="hover:border-primary flex flex-col justify-between border-2 border-zinc-800 bg-black p-6 transition-colors"
-						>
-							<div>
-								<p className="mb-4 text-xs font-bold tracking-[0.2em] text-zinc-500 uppercase">
-									{sport}
-								</p>
-								<p className="mb-4 text-5xl">{getSportEmoji(sport)}</p>
+						{/* Card Main Surface */}
+						<div className="group-hover:border-primary group-focus-visible:border-primary relative flex h-full flex-col border-2 border-zinc-800 bg-zinc-950 p-8 transition-colors duration-300">
+							{/* Card Header */}
+							<div className="mb-12 flex items-start justify-between">
+								<div className="group-hover:bg-primary/10 group-hover:border-primary/30 rounded-xl border border-zinc-800 bg-zinc-900 p-4 transition-colors">
+									<Crosshair className="text-primary h-8 w-8" />
 								</div>
-								<p className="text-sm leading-relaxed font-medium text-zinc-400">
-									Polished pick flow in minutes.
+								<div className="bg-primary/10 text-primary border-primary/20 flex items-center gap-1.5 rounded border px-2.5 py-1 text-[11px] font-extrabold tracking-widest uppercase">
+									<div className="bg-primary h-1.5 w-1.5 animate-pulse rounded-full" />
+									Live Now
+								</div>
+							</div>
+
+							{/* Card Content */}
+							<div className="flex-1">
+								<h3 className="font-display group-hover:text-primary mb-4 text-4xl leading-none text-white uppercase transition-colors">
+									Prediction <br /> Game
+								</h3>
+								<p className="text-base leading-relaxed text-zinc-400">
+									Call the shots. Create custom sports prediction challenges,
+									rally your crew with a single link, and watch the real-time
+									leaderboard separate the visionaries from the rookies.
 								</p>
 							</div>
-						))}
+
+							{/* Card Footer */}
+							<div className="group-hover:border-primary/30 mt-10 flex items-center justify-between border-t border-zinc-800 pt-6 transition-colors">
+								<span className="group-hover:text-primary text-sm font-bold tracking-wider text-white uppercase transition-colors">
+									Enter Arena
+								</span>
+								<div className="group-hover:bg-primary rounded-full bg-zinc-900 p-2 transition-all duration-300 group-hover:rotate-45 group-hover:text-black">
+									<ArrowUpRight className="h-5 w-5" />
+								</div>
+							</div>
+						</div>
+					</Link>
+
+					{/* Coming Soon Card */}
+					<div className="group relative block opacity-80 grayscale-[0.5]">
+						{/* Card Background / Shadow layer */}
+						<div className="absolute inset-0 translate-x-2 translate-y-2 bg-zinc-800" />
+
+						{/* Card Main Surface */}
+						<div className="relative flex h-full flex-col overflow-hidden border-2 border-zinc-800 bg-zinc-950 p-8">
+							{/* Diagonal hazard stripes overlay */}
+							<div className="pointer-events-none absolute -inset-full bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(255,255,255,0.02)_10px,rgba(255,255,255,0.02)_20px)]" />
+
+							{/* Card Header */}
+							<div className="relative z-10 mb-12 flex items-start justify-between">
+								<div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+									<Gamepad2 className="h-8 w-8 text-zinc-600" />
+								</div>
+								<div className="flex items-center rounded border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-[11px] font-extrabold tracking-widest text-zinc-500 uppercase">
+									In Development
+								</div>
+							</div>
+
+							{/* Card Content */}
+							<div className="relative z-10 flex-1">
+								<h3 className="font-display mb-4 text-4xl leading-none text-zinc-600 uppercase">
+									Mystery <br /> Challenge
+								</h3>
+								<p className="text-base leading-relaxed text-zinc-500">
+									The forge is burning. Our engineers are constructing new
+									competitive formats. Keep your skills sharp, the next
+									battleground drops soon.
+								</p>
+							</div>
+
+							{/* Card Footer */}
+							<div className="relative z-10 mt-10 flex items-center justify-between border-t border-zinc-800 pt-6">
+								<span className="text-sm font-bold tracking-wider text-zinc-600 uppercase">
+									Locked
+								</span>
+								<Trophy className="h-5 w-5 text-zinc-700" />
+							</div>
+						</div>
+					</div>
 				</div>
 			</div>
 		</PageShell>

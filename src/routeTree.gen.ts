@@ -10,89 +10,105 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AdminIndexRouteImport } from './routes/admin/index'
-import { Route as AdminChallengeIdRouteImport } from './routes/admin/$challengeId'
-import { Route as CChallengeIdIndexRouteImport } from './routes/c/$challengeId/index'
-import { Route as CChallengeIdLeaderboardRouteImport } from './routes/c/$challengeId/leaderboard'
+import { Route as PredictionIndexRouteImport } from './routes/prediction/index'
+import { Route as PredictionAdminIndexRouteImport } from './routes/prediction/admin/index'
+import { Route as PredictionAdminChallengeIdRouteImport } from './routes/prediction/admin/$challengeId'
+import { Route as PredictionCChallengeIdIndexRouteImport } from './routes/prediction/c/$challengeId/index'
+import { Route as PredictionCChallengeIdLeaderboardRouteImport } from './routes/prediction/c/$challengeId/leaderboard'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminIndexRoute = AdminIndexRouteImport.update({
-  id: '/admin/',
-  path: '/admin/',
+const PredictionIndexRoute = PredictionIndexRouteImport.update({
+  id: '/prediction/',
+  path: '/prediction/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminChallengeIdRoute = AdminChallengeIdRouteImport.update({
-  id: '/admin/$challengeId',
-  path: '/admin/$challengeId',
+const PredictionAdminIndexRoute = PredictionAdminIndexRouteImport.update({
+  id: '/prediction/admin/',
+  path: '/prediction/admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CChallengeIdIndexRoute = CChallengeIdIndexRouteImport.update({
-  id: '/c/$challengeId/',
-  path: '/c/$challengeId/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CChallengeIdLeaderboardRoute = CChallengeIdLeaderboardRouteImport.update({
-  id: '/c/$challengeId/leaderboard',
-  path: '/c/$challengeId/leaderboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
+const PredictionAdminChallengeIdRoute =
+  PredictionAdminChallengeIdRouteImport.update({
+    id: '/prediction/admin/$challengeId',
+    path: '/prediction/admin/$challengeId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const PredictionCChallengeIdIndexRoute =
+  PredictionCChallengeIdIndexRouteImport.update({
+    id: '/prediction/c/$challengeId/',
+    path: '/prediction/c/$challengeId/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const PredictionCChallengeIdLeaderboardRoute =
+  PredictionCChallengeIdLeaderboardRouteImport.update({
+    id: '/prediction/c/$challengeId/leaderboard',
+    path: '/prediction/c/$challengeId/leaderboard',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin/$challengeId': typeof AdminChallengeIdRoute
-  '/admin/': typeof AdminIndexRoute
-  '/c/$challengeId/leaderboard': typeof CChallengeIdLeaderboardRoute
-  '/c/$challengeId/': typeof CChallengeIdIndexRoute
+  '/prediction/': typeof PredictionIndexRoute
+  '/prediction/admin/$challengeId': typeof PredictionAdminChallengeIdRoute
+  '/prediction/admin/': typeof PredictionAdminIndexRoute
+  '/prediction/c/$challengeId/leaderboard': typeof PredictionCChallengeIdLeaderboardRoute
+  '/prediction/c/$challengeId/': typeof PredictionCChallengeIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin/$challengeId': typeof AdminChallengeIdRoute
-  '/admin': typeof AdminIndexRoute
-  '/c/$challengeId/leaderboard': typeof CChallengeIdLeaderboardRoute
-  '/c/$challengeId': typeof CChallengeIdIndexRoute
+  '/prediction': typeof PredictionIndexRoute
+  '/prediction/admin/$challengeId': typeof PredictionAdminChallengeIdRoute
+  '/prediction/admin': typeof PredictionAdminIndexRoute
+  '/prediction/c/$challengeId/leaderboard': typeof PredictionCChallengeIdLeaderboardRoute
+  '/prediction/c/$challengeId': typeof PredictionCChallengeIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin/$challengeId': typeof AdminChallengeIdRoute
-  '/admin/': typeof AdminIndexRoute
-  '/c/$challengeId/leaderboard': typeof CChallengeIdLeaderboardRoute
-  '/c/$challengeId/': typeof CChallengeIdIndexRoute
+  '/prediction/': typeof PredictionIndexRoute
+  '/prediction/admin/$challengeId': typeof PredictionAdminChallengeIdRoute
+  '/prediction/admin/': typeof PredictionAdminIndexRoute
+  '/prediction/c/$challengeId/leaderboard': typeof PredictionCChallengeIdLeaderboardRoute
+  '/prediction/c/$challengeId/': typeof PredictionCChallengeIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/admin/$challengeId'
-    | '/admin/'
-    | '/c/$challengeId/leaderboard'
-    | '/c/$challengeId/'
+    | '/prediction/'
+    | '/prediction/admin/$challengeId'
+    | '/prediction/admin/'
+    | '/prediction/c/$challengeId/leaderboard'
+    | '/prediction/c/$challengeId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin/$challengeId'
-    | '/admin'
-    | '/c/$challengeId/leaderboard'
-    | '/c/$challengeId'
+    | '/prediction'
+    | '/prediction/admin/$challengeId'
+    | '/prediction/admin'
+    | '/prediction/c/$challengeId/leaderboard'
+    | '/prediction/c/$challengeId'
   id:
     | '__root__'
     | '/'
-    | '/admin/$challengeId'
-    | '/admin/'
-    | '/c/$challengeId/leaderboard'
-    | '/c/$challengeId/'
+    | '/prediction/'
+    | '/prediction/admin/$challengeId'
+    | '/prediction/admin/'
+    | '/prediction/c/$challengeId/leaderboard'
+    | '/prediction/c/$challengeId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminChallengeIdRoute: typeof AdminChallengeIdRoute
-  AdminIndexRoute: typeof AdminIndexRoute
-  CChallengeIdLeaderboardRoute: typeof CChallengeIdLeaderboardRoute
-  CChallengeIdIndexRoute: typeof CChallengeIdIndexRoute
+  PredictionIndexRoute: typeof PredictionIndexRoute
+  PredictionAdminChallengeIdRoute: typeof PredictionAdminChallengeIdRoute
+  PredictionAdminIndexRoute: typeof PredictionAdminIndexRoute
+  PredictionCChallengeIdLeaderboardRoute: typeof PredictionCChallengeIdLeaderboardRoute
+  PredictionCChallengeIdIndexRoute: typeof PredictionCChallengeIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -104,32 +120,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/': {
-      id: '/admin/'
-      path: '/admin'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof AdminIndexRouteImport
+    '/prediction/': {
+      id: '/prediction/'
+      path: '/prediction'
+      fullPath: '/prediction/'
+      preLoaderRoute: typeof PredictionIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/$challengeId': {
-      id: '/admin/$challengeId'
-      path: '/admin/$challengeId'
-      fullPath: '/admin/$challengeId'
-      preLoaderRoute: typeof AdminChallengeIdRouteImport
+    '/prediction/admin/': {
+      id: '/prediction/admin/'
+      path: '/prediction/admin'
+      fullPath: '/prediction/admin/'
+      preLoaderRoute: typeof PredictionAdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/c/$challengeId/': {
-      id: '/c/$challengeId/'
-      path: '/c/$challengeId'
-      fullPath: '/c/$challengeId/'
-      preLoaderRoute: typeof CChallengeIdIndexRouteImport
+    '/prediction/admin/$challengeId': {
+      id: '/prediction/admin/$challengeId'
+      path: '/prediction/admin/$challengeId'
+      fullPath: '/prediction/admin/$challengeId'
+      preLoaderRoute: typeof PredictionAdminChallengeIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/c/$challengeId/leaderboard': {
-      id: '/c/$challengeId/leaderboard'
-      path: '/c/$challengeId/leaderboard'
-      fullPath: '/c/$challengeId/leaderboard'
-      preLoaderRoute: typeof CChallengeIdLeaderboardRouteImport
+    '/prediction/c/$challengeId/': {
+      id: '/prediction/c/$challengeId/'
+      path: '/prediction/c/$challengeId'
+      fullPath: '/prediction/c/$challengeId/'
+      preLoaderRoute: typeof PredictionCChallengeIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prediction/c/$challengeId/leaderboard': {
+      id: '/prediction/c/$challengeId/leaderboard'
+      path: '/prediction/c/$challengeId/leaderboard'
+      fullPath: '/prediction/c/$challengeId/leaderboard'
+      preLoaderRoute: typeof PredictionCChallengeIdLeaderboardRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -137,10 +160,12 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminChallengeIdRoute: AdminChallengeIdRoute,
-  AdminIndexRoute: AdminIndexRoute,
-  CChallengeIdLeaderboardRoute: CChallengeIdLeaderboardRoute,
-  CChallengeIdIndexRoute: CChallengeIdIndexRoute,
+  PredictionIndexRoute: PredictionIndexRoute,
+  PredictionAdminChallengeIdRoute: PredictionAdminChallengeIdRoute,
+  PredictionAdminIndexRoute: PredictionAdminIndexRoute,
+  PredictionCChallengeIdLeaderboardRoute:
+    PredictionCChallengeIdLeaderboardRoute,
+  PredictionCChallengeIdIndexRoute: PredictionCChallengeIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

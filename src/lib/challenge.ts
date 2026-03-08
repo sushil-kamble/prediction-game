@@ -38,11 +38,11 @@ export function getSportEmoji(sport: string) {
 }
 
 export function buildChallengeUrl(origin: string, challengeId: string) {
-	return `${origin}/c/${challengeId}`;
+	return `${origin}/prediction/c/${challengeId}`;
 }
 
 export function buildLeaderboardUrl(origin: string, challengeId: string) {
-	return `${origin}/c/${challengeId}/leaderboard`;
+	return `${origin}/prediction/c/${challengeId}/leaderboard`;
 }
 
 export function answeredCorrectCount(

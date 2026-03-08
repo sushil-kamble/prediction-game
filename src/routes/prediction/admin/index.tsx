@@ -33,9 +33,9 @@ type CreateChallengeErrors = {
 	sport?: string;
 };
 
-export const Route = createFileRoute("/admin/")({
+export const Route = createFileRoute("/prediction/admin/")({
 	head: () => ({
-		meta: [{ title: "Admin | PredictGame" }],
+		meta: [{ title: "Admin | Sushil Games" }],
 	}),
 	component: AdminHomeRoute,
 });
@@ -121,7 +121,7 @@ function AdminHomeRoute() {
 
 			startTransition(() => {
 				navigate({
-					to: "/admin/$challengeId",
+					to: "/prediction/admin/$challengeId",
 					params: { challengeId: result.challengeId.toString() },
 				});
 			});
@@ -189,7 +189,7 @@ function AdminHomeRoute() {
 									title={challenge.title}
 									sport={challenge.sport}
 									status={challenge.status}
-									to="/admin/$challengeId"
+									to="/prediction/admin/$challengeId"
 								/>
 							))
 						)}
@@ -198,10 +198,10 @@ function AdminHomeRoute() {
 
 				<div className="flex justify-center pt-4 pb-12">
 					<Link
-						to="/"
+						to="/prediction"
 						className="inline-flex items-center justify-center text-sm font-bold uppercase tracking-widest text-zinc-500 hover:text-primary transition-colors"
 					>
-						← BACK TO LANDING
+						← BACK TO PREDICTION
 					</Link>
 				</div>
 			</PageShell>

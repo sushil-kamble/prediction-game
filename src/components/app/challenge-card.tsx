@@ -9,7 +9,7 @@ type ChallengeCardProps = {
 	title: string;
 	sport: string;
 	status: ChallengeStatus;
-	to: "/admin/$challengeId" | "/c/$challengeId/leaderboard";
+	to: "/prediction/admin/$challengeId" | "/prediction/c/$challengeId/leaderboard";
 	label?: string;
 };
 

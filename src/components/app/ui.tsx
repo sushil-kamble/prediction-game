@@ -213,7 +213,7 @@ export function FullScreenState({
 	return (
 		<PageShell className="min-h-[calc(100vh-2rem)] justify-center py-10 sm:py-12">
 			<div className="mx-auto w-full max-w-xl min-w-0 overflow-hidden border-4 border-white bg-black p-6 text-center shadow-[12px_12px_0px_0px_#ccff00] sm:p-12">
-				<SectionEyebrow>PREDICTGAME</SectionEyebrow>
+				<SectionEyebrow>SUSHIL GAMES</SectionEyebrow>
 				<h1 className="font-display mb-6 text-4xl leading-none text-white uppercase sm:text-5xl">
 					{title}
 				</h1>

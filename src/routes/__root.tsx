@@ -25,12 +25,12 @@ export const Route = createRootRoute({
 				content: "width=device-width, initial-scale=1, viewport-fit=cover",
 			},
 			{
-				title: "PredictGame",
+				title: "Sushil Games",
 			},
 			{
 				name: "description",
 				content:
-					"Create sports prediction challenges, share one link, and watch the leaderboard update live.",
+					"A collection of games by Sushil. Predict, compete, and have fun.",
 			},
 			{ name: "theme-color", content: "#000000" },
 			{ name: "apple-mobile-web-app-capable", content: "yes" },
