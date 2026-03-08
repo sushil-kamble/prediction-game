@@ -44,18 +44,9 @@ function LeaderboardRoute() {
 	const [storedParticipantId, setStoredParticipantId] = useState<
 		string | null | undefined
 	>(undefined);
-	const [isCollapsed, setIsCollapsed] = useState(false);
-
 	useEffect(() => {
 		setStoredParticipantId(getStoredParticipantId(challengeId));
 	}, [challengeId]);
-
-	useEffect(() => {
-		const onScroll = () => setIsCollapsed(window.scrollY > 32);
-		onScroll();
-		window.addEventListener("scroll", onScroll, { passive: true });
-		return () => window.removeEventListener("scroll", onScroll);
-	}, []);
 
 	const participantId =
 		participant?._id.toString() ?? storedParticipantId ?? null;
@@ -93,17 +84,16 @@ function LeaderboardRoute() {
 
 	return (
 		<PageShell className="gap-6 pt-0 pb-8">
-			<div className="sticky top-0 z-20 -mx-4 mb-2 border-b-2 border-zinc-800 bg-black px-4 pt-4 pb-4 sm:pt-6">
+			<div
+				className="sticky top-0 z-20 -mx-4 mb-2 border-b-2 border-zinc-800 bg-black px-4 pb-4"
+				style={{
+					paddingTop: "max(1rem, env(safe-area-inset-top, 0px))",
+				}}
+			>
 				<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 					<div>
-						<SectionEyebrow className={isCollapsed ? "hidden" : "mb-2"}>
-							Live leaderboard
-						</SectionEyebrow>
-						<h1
-							className={`font-display leading-none text-white uppercase transition-all ${
-								isCollapsed ? "text-2xl" : "text-3xl"
-							}`}
-						>
+						<SectionEyebrow className="mb-2">Live leaderboard</SectionEyebrow>
+						<h1 className="font-display text-3xl leading-none text-white uppercase">
 							{challenge.title}
 						</h1>
 						<div className="mt-3 flex flex-wrap gap-2">
