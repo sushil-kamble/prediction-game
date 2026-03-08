@@ -13,7 +13,7 @@
 		"format": "prettier --write .",
 		"lint": "eslint .",
 		"typecheck": "tsc --noEmit",
-		"deploy": "pnpm run build && wrangler deploy"
+		"deploy": "convex deploy --cmd 'pnpm run build && wrangler deploy' -y"
 	},
 	"dependencies": {
 		"@cloudflare/vite-plugin": "^1.26.0",
