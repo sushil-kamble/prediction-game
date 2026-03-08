@@ -642,16 +642,16 @@ function AdminChallengeRoute() {
 		<>
 			<PageShell className="gap-6 py-6 sm:py-8">
 				<GlassCard className="px-5 py-6 sm:px-8">
-					<div className="flex flex-wrap items-center gap-3">
+					<div className="flex flex-wrap items-center justify-between gap-3">
 						<Button variant="outline" size="sm" asChild>
 							<Link to="/prediction/admin" className="no-underline">
 								<ArrowLeft className="h-4 w-4" />
 								Back
 							</Link>
 						</Button>
-						<span className="border-primary/20 bg-primary/10 text-primary rounded-lg border px-3 py-1 text-xs font-extrabold tracking-[0.22em] uppercase">
+						<Button variant="outline" size="sm" className="pointer-events-none">
 							Admin mode
-						</span>
+						</Button>
 					</div>
 
 					<div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">

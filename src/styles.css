@@ -11,32 +11,32 @@
 	--font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 	--font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
 
-	--color-background: #000000;
-	--color-foreground: #ffffff;
+	--color-background: #111111;
+	--color-foreground: #f5f5f5;
 
-	--color-card: #0a0a0a;
-	--color-card-foreground: #ffffff;
+	--color-card: #1c1c1c;
+	--color-card-foreground: #f5f5f5;
 
-	--color-popover: #0a0a0a;
-	--color-popover-foreground: #ffffff;
+	--color-popover: #1c1c1c;
+	--color-popover-foreground: #f5f5f5;
 
 	--color-primary: #ccff00;
-	--color-primary-foreground: #000000;
+	--color-primary-foreground: #0a0a0a;
 
-	--color-secondary: #1a1a1a;
-	--color-secondary-foreground: #ffffff;
+	--color-secondary: #272727;
+	--color-secondary-foreground: #f5f5f5;
 
-	--color-muted: #262626;
-	--color-muted-foreground: #a3a3a3;
+	--color-muted: #313131;
+	--color-muted-foreground: #b0b0b0;
 
 	--color-accent: #ccff00;
-	--color-accent-foreground: #000000;
+	--color-accent-foreground: #0a0a0a;
 
 	--color-destructive: #ff0055;
 	--color-destructive-foreground: #ffffff;
 
-	--color-border: #262626;
-	--color-input: #262626;
+	--color-border: #3a3a3a;
+	--color-input: #2e2e2e;
 	--color-ring: #ccff00;
 
 	--radius-sm: calc(var(--radius) - 2px);
@@ -87,10 +87,10 @@
 		inset: 0;
 		pointer-events: none;
 		z-index: -1;
-		opacity: 0.15;
+		opacity: 0.1;
 		background-image:
-			linear-gradient(#333 1px, transparent 1px),
-			linear-gradient(90deg, #333 1px, transparent 1px);
+			linear-gradient(#444 1px, transparent 1px),
+			linear-gradient(90deg, #444 1px, transparent 1px);
 		background-size: 40px 40px;
 	}
 
