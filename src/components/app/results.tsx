@@ -105,24 +105,24 @@ const medalTheme = {
 const podiumLayout = {
 	gold: {
 		columnOrder: "order-1 md:order-2",
-		columnWidth: "md:flex-[1.08]",
-		platformHeight: "h-[4.5rem] md:h-24",
-		platformGlow: "shadow-[0_-18px_42px_rgba(250,204,21,0.16)]",
-		cardLift: "md:-mb-2",
+		columnWidth: "md:flex-[1.12]",
+		platformHeight: "h-20 md:h-28",
+		platformGlow: "shadow-[0_-18px_42px_rgba(250,204,21,0.18)]",
+		platformRank: 1,
 	},
 	silver: {
 		columnOrder: "order-2 md:order-1",
-		columnWidth: "md:flex-[0.96]",
-		platformHeight: "h-12 md:h-16",
+		columnWidth: "md:flex-1",
+		platformHeight: "h-14 md:h-20",
 		platformGlow: "shadow-[0_-12px_30px_rgba(226,232,240,0.14)]",
-		cardLift: "md:-mb-1",
+		platformRank: 2,
 	},
 	bronze: {
 		columnOrder: "order-3 md:order-3",
-		columnWidth: "md:flex-[0.96]",
-		platformHeight: "h-8 md:h-12",
+		columnWidth: "md:flex-1",
+		platformHeight: "h-10 md:h-14",
 		platformGlow: "shadow-[0_-10px_26px_rgba(180,83,9,0.14)]",
-		cardLift: "",
+		platformRank: 3,
 	},
 } satisfies Record<
 	MedalTier,
@@ -131,7 +131,7 @@ const podiumLayout = {
 		columnWidth: string;
 		platformHeight: string;
 		platformGlow: string;
-		cardLift: string;
+		platformRank: number;
 	}
 >;
 
@@ -338,21 +338,34 @@ export function PodiumSection({
 		return null;
 	}
 
+	const isOfficial = winnersAnnounced;
+
 	return (
-		<GlassCard className="px-5 py-6 sm:px-8">
+		<section
+			className={cn(
+				"podium-section relative overflow-hidden border-2 p-5 sm:p-8",
+				isOfficial
+					? "border-yellow-400/30 bg-gradient-to-b from-yellow-400/[0.04] via-black to-black shadow-[0_0_60px_rgba(250,204,21,0.06)]"
+					: "border-zinc-800 bg-black"
+			)}
+		>
+			{/* Decorative top accent */}
+			{isOfficial && (
+				<div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-yellow-400/60 to-transparent" />
+			)}
+
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 				<div>
 					<SectionEyebrow>
-						{winnersAnnounced ? "Official podium" : "Current leaders"}
+						{isOfficial ? "Official podium" : "Current leaders"}
 					</SectionEyebrow>
 					<h2 className="font-display text-3xl text-white">
-						{title ??
-							(winnersAnnounced ? "The medal table" : "The board to chase")}
+						{title ?? (isOfficial ? "The medal table" : "The board to chase")}
 					</h2>
 				</div>
 			</div>
 
-			<div className="mt-6 flex flex-col gap-4 md:flex-row md:items-end md:gap-5">
+			<div className="mt-8 flex flex-col gap-4 md:flex-row md:items-end md:gap-5 lg:gap-6">
 				{podium.map((entry, index) => (
 					<PodiumCard
 						key={`${entry.medal}-${entry.nickname}-${entry.rank}`}
@@ -362,7 +375,7 @@ export function PodiumSection({
 					/>
 				))}
 			</div>
-		</GlassCard>
+		</section>
 	);
 }
 
@@ -386,19 +399,21 @@ function PodiumCard({
 			className={cn(
 				"flex min-w-0 flex-col md:self-end",
 				layout.columnOrder,
-				layout.columnWidth
+				layout.columnWidth,
+				"animate-[rise-in_500ms_ease-out_both]"
 			)}
 			style={{
-				animationDelay: `${index * 100}ms`,
+				animationDelay: `${index * 120}ms`,
 			}}
 		>
+			{/* Card body */}
 			<div
 				className={cn(
-					"relative overflow-hidden border-2 px-5 pt-6 pb-5",
+					"relative overflow-hidden border-2 px-5 pt-5 pb-5",
 					theme.border,
 					theme.bg,
 					theme.shadow,
-					layout.cardLift,
+					isGold && "border-[2.5px]",
 					isCurrentPlayer &&
 						`ring-2 ${theme.ring} ring-offset-2 ring-offset-black`
 				)}
@@ -408,9 +423,14 @@ function PodiumCard({
 
 				{/* Header: medal badge + icon */}
 				<div className="flex items-start justify-between gap-3">
-					<div className="flex min-w-0 flex-col gap-3">
+					<div className="flex min-w-0 flex-col gap-2.5">
 						<MedalBadge medal={entry.medal} />
-						<h3 className="font-display truncate text-2xl leading-none text-white sm:text-3xl">
+						<h3
+							className={cn(
+								"font-display truncate leading-none text-white",
+								isGold ? "text-2xl sm:text-3xl" : "text-xl sm:text-2xl"
+							)}
+						>
 							{entry.nickname}
 						</h3>
 					</div>
@@ -429,9 +449,13 @@ function PodiumCard({
 				</div>
 
 				{/* Score — the hero number */}
-				<div className="mt-5 flex items-baseline gap-2">
+				<div className="mt-4 flex items-baseline gap-2">
 					<span
-						className={cn("font-display text-4xl leading-none", theme.accent)}
+						className={cn(
+							"font-display leading-none",
+							isGold ? "text-4xl sm:text-5xl" : "text-3xl sm:text-4xl",
+							theme.accent
+						)}
 					>
 						{entry.score}
 					</span>
@@ -448,7 +472,7 @@ function PodiumCard({
 				{/* Compact stats row */}
 				<div
 					className={cn(
-						"mt-4 flex items-center gap-4 border-t-2 pt-4 text-xs font-bold tracking-widest uppercase",
+						"mt-4 flex items-center gap-4 border-t-2 pt-3 text-xs font-bold tracking-widest uppercase",
 						theme.muted
 					)}
 					style={{ borderColor: "rgba(255,255,255,0.1)" }}
@@ -477,9 +501,10 @@ function PodiumCard({
 				) : null}
 			</div>
 
+			{/* Platform base with rank number */}
 			<div
 				className={cn(
-					"relative border-x-2 border-b-2 bg-black/80",
+					"relative flex items-center justify-center border-x-2 border-b-2 bg-black/80",
 					theme.border,
 					layout.platformHeight,
 					layout.platformGlow
@@ -487,19 +512,20 @@ function PodiumCard({
 			>
 				<div
 					className={cn(
-						"absolute inset-x-0 top-0 h-1",
+						"absolute inset-x-0 top-0 h-[2px]",
 						theme.bar,
 						entry.medal === "bronze" && "opacity-85"
 					)}
 				/>
-				<div className="absolute inset-x-3 bottom-0 h-px bg-white/8" />
-				<div className="absolute inset-x-0 bottom-4 flex justify-center">
-					<span
-						className={cn("font-display text-5xl leading-none", theme.muted)}
-					>
-						{entry.rank}
-					</span>
-				</div>
+				<span
+					className={cn(
+						"font-display leading-none select-none",
+						isGold ? "text-6xl md:text-7xl" : "text-5xl md:text-6xl",
+						theme.muted
+					)}
+				>
+					{layout.platformRank}
+				</span>
 			</div>
 		</div>
 	);
@@ -554,11 +580,7 @@ export function ResultsRecoveryCard({
 					/>
 				</label>
 				<div className="flex flex-col gap-3 sm:flex-row">
-					<Button
-						type="submit"
-						className="sm:flex-1"
-						disabled={isSubmitting}
-					>
+					<Button type="submit" className="sm:flex-1" disabled={isSubmitting}>
 						{isSubmitting ? "Checking..." : "Show my result"}
 					</Button>
 					{showLeaderboardAction}
@@ -618,13 +640,16 @@ export function ParticipantAnswerReview({
 				}
 			>
 				<div className="mb-6 grid grid-cols-2 gap-3">
-					<ReviewStat label="Correct" value={`${correctCount}/${answers.length}`} />
+					<ReviewStat
+						label="Correct"
+						value={`${correctCount}/${answers.length}`}
+					/>
 					<ReviewStat
 						label="Points"
 						value={String(
 							answers
 								.filter((answer) => answer.isCorrect)
-								.reduce((total, answer) => total + answer.pointValue, 0),
+								.reduce((total, answer) => total + answer.pointValue, 0)
 						)}
 					/>
 				</div>
@@ -650,7 +675,7 @@ export function ParticipantAnswerReview({
 										"shrink-0 rounded-none border-2 px-3 py-1 text-[0.65rem] font-extrabold tracking-[0.24em] uppercase",
 										answer.isCorrect
 											? "border-emerald-400 bg-emerald-400/10 text-emerald-300"
-											: "border-rose-400 bg-rose-400/10 text-rose-300",
+											: "border-rose-400 bg-rose-400/10 text-rose-300"
 									)}
 								>
 									{answer.isCorrect ? (
@@ -672,12 +697,12 @@ export function ParticipantAnswerReview({
 												? "border-emerald-400 bg-emerald-400/10 text-white"
 												: option.isSelected
 													? "border-rose-400 bg-rose-400/10 text-white"
-													: "border-zinc-800 bg-black text-zinc-400",
+													: "border-zinc-800 bg-black text-zinc-400"
 										)}
 									>
 										<div className="flex items-start justify-between gap-3">
 											<div className="flex min-w-0 items-start gap-3">
-												<span className="mt-0.5 text-xs font-mono font-bold text-zinc-500">
+												<span className="mt-0.5 font-mono text-xs font-bold text-zinc-500">
 													{optionLabel(option.index)}.
 												</span>
 												<p className="min-w-0 text-sm leading-6 font-medium sm:text-base">
@@ -718,13 +743,7 @@ export function ParticipantAnswerReview({
 	);
 }
 
-function ReviewStat({
-	label,
-	value,
-}: {
-	label: string;
-	value: string;
-}) {
+function ReviewStat({ label, value }: { label: string; value: string }) {
 	return (
 		<div className="border-2 border-zinc-800 bg-zinc-950 px-4 py-4">
 			<p className="text-xs font-bold tracking-[0.22em] text-zinc-500 uppercase">
