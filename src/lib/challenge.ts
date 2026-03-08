@@ -90,8 +90,9 @@ export function buildLeaderboardUrl(origin: string, challengeId: string) {
 export function answeredCorrectCount(
 	questions: Array<{ correctOptionIndex?: number | null }>
 ) {
-	return questions.filter((question) => question.correctOptionIndex !== null)
-		.length;
+	return questions.filter(
+		(question) => typeof question.correctOptionIndex === "number"
+	).length;
 }
 
 export function clampOptionCount(options: string[]) {
@@ -131,7 +132,7 @@ export function getAdminHint({
 	}
 
 	if (status === "closed") {
-		return "Challenge is closed.";
+		return "Challenge was cancelled without announcing winners.";
 	}
 
 	if (status === "draft" && questionCount === 0) {
@@ -238,10 +239,10 @@ export function getAdminWorkflow({
 		primaryAction = null;
 	} else if (status === "closed") {
 		currentStep = "announce";
-		eyebrow = "Challenge closed";
-		title = "This challenge is locked";
+		eyebrow = "Challenge cancelled";
+		title = "This challenge was cancelled";
 		description =
-			"The challenge is closed. Review the final state from the cards below.";
+			"The challenge was closed without announcing winners. Players see this challenge as cancelled.";
 		primaryAction = null;
 	} else if (questionCount === 0) {
 		currentStep = "questions";
@@ -398,10 +399,12 @@ export function getRuntimeCopy({
 	}
 
 	return {
-		title: "The challenge is finalized",
+		title: winnersAnnouncedAt
+			? "The challenge is finalized"
+			: "The challenge was cancelled",
 		description: winnersAnnouncedAt
 			? `Winners were announced on ${formatTs(winnersAnnouncedAt)}.`
-			: "This challenge is closed.",
+			: "This challenge was closed without announcing winners.",
 	};
 }
 

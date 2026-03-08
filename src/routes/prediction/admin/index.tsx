@@ -154,32 +154,32 @@ function AdminHomeRoute() {
 					</div>
 				</div>
 
-				<div className="border-2 border-zinc-800 bg-black p-6 sm:p-10">
-					<div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between mb-8">
+				<div className="border-2 border-zinc-800 bg-black p-5 sm:p-6">
+					<div className="flex items-center justify-between gap-3">
 						<div>
-							<div className="text-primary font-bold tracking-widest text-sm uppercase mb-2">
-								SAVED LOCALLY
-							</div>
-							<h2 className="font-display text-4xl text-white uppercase">
-								MY CHALLENGES
+							<p className="text-primary text-xs font-bold tracking-widest uppercase">
+								Saved locally
+							</p>
+							<h2 className="font-display text-foreground mt-1 text-2xl leading-tight sm:text-3xl">
+								My challenges
 							</h2>
 						</div>
-						<Button onClick={() => setIsSheetOpen(true)} className="sm:w-auto text-lg px-8">
-							<Plus className="h-6 w-6 mr-2" />
-							NEW CHALLENGE
+						<Button onClick={() => setIsSheetOpen(true)} size="sm">
+							<Plus className="h-4 w-4" />
+							New challenge
 						</Button>
 					</div>
 
-					<div className="grid gap-6">
+					<div className="mt-5 grid gap-2">
 						{storedChallenges.length === 0 ? (
-							<div className="border-2 border-dashed border-zinc-700 bg-zinc-950 p-10 text-center flex flex-col items-center">
-								<p className="text-lg font-medium text-zinc-400 mb-6 max-w-md">
-									YOU HAVEN'T CREATED ANYTHING ON THIS DEVICE YET.
+							<div className="border-2 border-dashed border-zinc-800 bg-zinc-950 px-6 py-10 text-center">
+								<p className="text-sm text-zinc-500">
+									No challenges on this device yet.
 								</p>
 							</div>
 						) : summaries === undefined ? (
 							Array.from({ length: storedChallenges.length }).map((_, index) => (
-								<SkeletonBlock key={index} className="h-34 bg-zinc-900 border-2 border-zinc-800" />
+								<SkeletonBlock key={index} className="h-14" />
 							))
 						) : (
 							mergedChallenges.map((challenge) => (
@@ -189,6 +189,7 @@ function AdminHomeRoute() {
 									title={challenge.title}
 									sport={challenge.sport}
 									status={challenge.status}
+									createdAt={challenge.createdAt}
 									to="/prediction/admin/$challengeId"
 								/>
 							))

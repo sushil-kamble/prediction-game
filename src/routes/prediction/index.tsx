@@ -281,7 +281,7 @@ function PredictionHomeRoute() {
 									setJoinUrl(e.target.value);
 									setJoinError(null);
 								}}
-								placeholder="https://play.sushilkamble.com/prediction/c/abc123..."
+								placeholder={`${import.meta.env.VITE_SITE_URL ?? "https://play.sushilkamble.com"}/prediction/c/abc123...`}
 								className="focus-visible:border-primary/50 focus-visible:ring-primary/20 h-14 rounded-none border-2 border-zinc-700 bg-zinc-950 pl-12 text-base font-medium text-white placeholder:text-zinc-600"
 							/>
 						</div>

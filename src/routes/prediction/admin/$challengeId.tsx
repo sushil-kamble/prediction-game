@@ -3,68 +3,32 @@ import type { FormEvent, KeyboardEvent } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import {
-	ArrowLeft,
-	Check,
-	Copy,
-	Minus,
-	Pencil,
-	Plus,
-	Share2,
-	Trash2,
-	Unlock,
-	X,
-} from "lucide-react";
-import {
-	BottomSheet,
 	Button,
 	FullScreenState,
-	GlassCard,
-	InlineNotice,
-	Input,
-	MetricPill,
-	OptionButton,
 	PageShell,
-	SectionEyebrow,
 	SkeletonBlock,
-	SportBadge,
-	StatusBadge,
-	Textarea,
 } from "#/components/app/ui";
+import { AdminDialogs } from "#/components/app/admin/admin-dialogs";
+import type { AdminQuestion } from "#/components/app/admin/admin-challenge-types";
+import { ChallengeHeaderCard } from "#/components/app/admin/challenge-header-card";
+import { QuestionSetupSection } from "#/components/app/admin/question-setup-section";
+import { RuntimeSection } from "#/components/app/admin/runtime-section";
+import { ScoringSection } from "#/components/app/admin/scoring-section";
+import { WorkflowCard } from "#/components/app/admin/workflow-card";
 import { PodiumSection } from "#/components/app/results";
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from "#/components/ui/alert-dialog";
 import { useToast } from "#/components/app/use-toast";
 import { api } from "#/lib/api";
 import {
 	type AdminWorkflowAction,
-	type AdminWorkflowStepState,
 	answeredCorrectCount,
 	buildChallengeUrl,
 	buildLeaderboardUrl,
 	canUnpublishChallengeQuestions,
 	getAdminWorkflow,
 	getRuntimeCopy,
-	optionLabel,
 	toggleCorrectOptionIndex,
 } from "#/lib/challenge";
 import { getStoredAdminChallenge } from "#/lib/storage";
-
-type AdminQuestion = {
-	_id: string;
-	text: string;
-	options: string[];
-	pointValue: number;
-	correctOptionIndex: number | null;
-	order: number;
-};
 
 export const Route = createFileRoute("/prediction/admin/$challengeId")({
 	head: ({ params }) => ({
@@ -72,36 +36,6 @@ export const Route = createFileRoute("/prediction/admin/$challengeId")({
 	}),
 	component: AdminChallengeRoute,
 });
-
-function handleRadioOptionKeyDown(
-	event: KeyboardEvent<HTMLButtonElement>,
-	currentIndex: number,
-	totalOptions: number,
-	onSelect: (nextIndex: number) => void
-) {
-	switch (event.key) {
-		case "ArrowDown":
-		case "ArrowRight":
-			event.preventDefault();
-			onSelect((currentIndex + 1) % totalOptions);
-			return;
-		case "ArrowUp":
-		case "ArrowLeft":
-			event.preventDefault();
-			onSelect((currentIndex - 1 + totalOptions) % totalOptions);
-			return;
-		case "Home":
-			event.preventDefault();
-			onSelect(0);
-			return;
-		case "End":
-			event.preventDefault();
-			onSelect(totalOptions - 1);
-			return;
-		default:
-			return;
-	}
-}
 
 export function AdminChallengeRoute() {
 	const { challengeId } = Route.useParams();
@@ -115,6 +49,7 @@ export function AdminChallengeRoute() {
 	const markCorrectAnswer = useMutation(api.challenges.markCorrectAnswer);
 	const clearAnswerMarkings = useMutation(api.challenges.clearAnswerMarkings);
 	const announceWinners = useMutation(api.challenges.announceWinners);
+	const closeMutation = useMutation(api.challenges.closeChallenge);
 	const { showToast } = useToast();
 
 	const [adminSecret, setAdminSecret] = useState<string | null | undefined>(
@@ -143,6 +78,9 @@ export function AdminChallengeRoute() {
 	const [isUnlocking, setIsUnlocking] = useState(false);
 	const [isLockConfirmOpen, setIsLockConfirmOpen] = useState(false);
 	const [isUnlockConfirmOpen, setIsUnlockConfirmOpen] = useState(false);
+	const [isCancelChallengeConfirmOpen, setIsCancelChallengeConfirmOpen] =
+		useState(false);
+	const [isCancellingChallenge, setIsCancellingChallenge] = useState(false);
 	const questionInputRef = useRef<HTMLTextAreaElement | null>(null);
 	const optionInputRefs = useRef<Array<HTMLInputElement | null>>([]);
 	const addOptionButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -392,6 +330,8 @@ export function AdminChallengeRoute() {
 		leaderboard.submittedParticipantCount > 0;
 	const canUnlockPredictions =
 		challenge.status === "scoring" && answeredCount === 0;
+	const canCancelChallenge =
+		challenge.status !== "closed" && !challenge.winnersAnnouncedAt;
 	const canUnpublishQuestions = canUnpublishChallengeQuestions({
 		status: challenge.status,
 		submittedCount,
@@ -702,6 +642,20 @@ export function AdminChallengeRoute() {
 		}
 	}
 
+	async function handleCancelChallenge() {
+		if (!adminSecret) return;
+		setIsCancellingChallenge(true);
+		try {
+			await closeMutation({ challengeId, adminSecret });
+			showToast("Challenge cancelled.", "success");
+			setIsCancelChallengeConfirmOpen(false);
+		} catch (error) {
+			showToast(getErrorMessage(error), "error");
+		} finally {
+			setIsCancellingChallenge(false);
+		}
+	}
+
 	function beginEditing(question: AdminQuestion) {
 		setEditingQuestionId(question._id.toString());
 		setQuestionText(question.text);
@@ -740,468 +694,76 @@ export function AdminChallengeRoute() {
 	return (
 		<>
 			<PageShell className="gap-6 py-6 sm:py-8">
-				<GlassCard className="px-5 py-6 sm:px-8">
-					<div className="flex flex-wrap items-center justify-between gap-3">
-						<div className="flex flex-wrap items-center gap-2">
-							<Button variant="outline" size="sm" asChild>
-								<Link to="/prediction/admin" className="no-underline">
-									<ArrowLeft className="h-4 w-4" />
-									Back
-								</Link>
-							</Button>
-							<Button
-								variant="outline"
-								size="sm"
-								className="pointer-events-none"
-							>
-								Admin mode
-							</Button>
-						</div>
-						{showUtilityActions ? (
-							<div className="flex flex-wrap items-center gap-2">
-								<Button variant="outline" size="sm" asChild>
-									<Link
-										to="/prediction/c/$challengeId/leaderboard"
-										params={{ challengeId }}
-										className="no-underline"
-									>
-										Preview leaderboard
-									</Link>
-								</Button>
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={() => setIsShareSheetOpen(true)}
-								>
-									<Share2 className="h-4 w-4" />
-									Share
-								</Button>
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={() => void handleCopyShareLink()}
-								>
-									<Copy className="h-4 w-4" />
-									Copy link
-								</Button>
-							</div>
-						) : null}
-					</div>
-
-					<div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(17rem,0.9fr)] lg:items-end">
-						<div className="min-w-0">
-							<SectionEyebrow>Challenge</SectionEyebrow>
-							<h1 className="font-display text-foreground text-4xl leading-none sm:text-5xl">
-								{challenge.title}
-							</h1>
-							<div className="mt-4 flex flex-wrap gap-2">
-								<SportBadge sport={challenge.sport} />
-								<StatusBadge status={challenge.status} />
-							</div>
-							<p className="mt-4 max-w-2xl text-sm leading-relaxed font-medium text-zinc-400 uppercase">
-								{runtimeDescription}
-							</p>
-						</div>
-						<div className="grid grid-cols-3 gap-3">
-							<MetricPill label="Questions" value={String(questionCount)} />
-							<MetricPill
-								label="Scored"
-								value={`${answeredCount}/${questionCount}`}
-							/>
-							<MetricPill
-								label="Submitted"
-								value={`${submittedCount}/${participantCount}`}
-							/>
-						</div>
-					</div>
-				</GlassCard>
+				<ChallengeHeaderCard
+					challengeId={challengeId}
+					title={challenge.title}
+					sport={challenge.sport}
+					status={challenge.status}
+					runtimeDescription={runtimeDescription}
+					questionCount={questionCount}
+					answeredCount={answeredCount}
+					submittedCount={submittedCount}
+					participantCount={participantCount}
+					showUtilityActions={showUtilityActions}
+					onOpenShareSheet={() => setIsShareSheetOpen(true)}
+					onCopyShareLink={handleCopyShareLink}
+				/>
 
 				{workflow ? (
-					<GlassCard className="border-primary/30 bg-primary/5 px-5 py-6 sm:px-8">
-						<div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-							<div className="max-w-2xl">
-								<SectionEyebrow className="text-primary">
-									{workflow.eyebrow}
-								</SectionEyebrow>
-								<h2 className="font-display text-foreground text-3xl leading-none sm:text-4xl">
-									{workflow.title}
-								</h2>
-								<p className="mt-3 text-sm leading-relaxed font-medium text-zinc-300 uppercase">
-									{workflow.description}
-								</p>
-							</div>
-							{workflow.primaryAction ? (
-								<Button
-									className="w-full sm:w-auto"
-									onClick={() =>
-										handleWorkflowAction(workflow.primaryAction?.type ?? null)
-									}
-									disabled={
-										workflow.primaryAction.disabled || workflowActionBusy
-									}
-								>
-									{workflowActionLabel}
-								</Button>
-							) : null}
-						</div>
-
-						<div className="mt-6 grid gap-3 lg:grid-cols-3">
-							{workflow.steps.map((step, index) => (
-								<WorkflowStepCard
-									key={step.key}
-									index={index + 1}
-									label={step.label}
-									description={step.description}
-									state={step.state}
-								/>
-							))}
-						</div>
-					</GlassCard>
+					<WorkflowCard
+						workflow={workflow}
+						workflowActionBusy={workflowActionBusy}
+						workflowActionLabel={workflowActionLabel}
+						onWorkflowAction={handleWorkflowAction}
+					/>
 				) : null}
 
 				<section ref={questionSectionRef}>
-					<GlassCard className="px-5 py-6 sm:px-8">
-						<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-							<div>
-								<SectionEyebrow>Question setup</SectionEyebrow>
-								<h2 className="font-display text-foreground text-3xl">
-									{editingQuestionId
-										? "Editing question"
-										: "Build the question set"}
-								</h2>
-								<p className="mt-2 max-w-2xl text-sm leading-relaxed font-medium text-zinc-400 uppercase">
-									Add the questions players will answer. Once published, this
-									set becomes read-only until you explicitly unlock it again.
-								</p>
-							</div>
-							<MetricPill
-								label="Current stack"
-								value={String(questionCount)}
-								className="sm:min-w-[12rem]"
-							/>
-						</div>
-
-						{!isQuestionEditUnlocked ? (
-							<InlineNotice tone="warning" className="mt-5">
-								{challenge.status === "closed"
-									? "Challenge closed. Editing is permanently locked."
-									: "Questions are frozen. Use the runtime controls below if you need to unlock and edit them."}
-							</InlineNotice>
-						) : null}
-
-						<div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-							<form
-								className="flex flex-col gap-5"
-								onSubmit={handleSaveQuestion}
-							>
-								<label className="flex flex-col gap-1.5">
-									<span className="text-muted-foreground text-xs font-bold tracking-widest uppercase">
-										Question
-									</span>
-									<Textarea
-										ref={questionInputRef}
-										value={questionText}
-										onChange={(event) => setQuestionText(event.target.value)}
-										onKeyDown={handleQuestionInputTab}
-										placeholder="Who scores first?"
-										disabled={!isQuestionEditUnlocked}
-									/>
-								</label>
-
-								<div className="flex flex-col gap-2">
-									<div className="flex items-center justify-between">
-										<span className="text-muted-foreground text-xs font-bold tracking-widest uppercase">
-											Options
-										</span>
-										{options.length < 5 ? (
-											<button
-												type="button"
-												ref={addOptionButtonRef}
-												onClick={() =>
-													setOptions((current) => [...current, ""])
-												}
-												onKeyDown={handleAddOptionButtonTab}
-												disabled={!isQuestionEditUnlocked}
-												className="focus-visible:ring-primary/40 bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 hover:text-primary flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-bold tracking-widest uppercase transition-colors outline-none focus-visible:ring-4 disabled:opacity-40"
-												aria-label="Add another option"
-											>
-												<Plus className="h-4 w-4" />
-												Add option
-											</button>
-										) : null}
-									</div>
-
-									{options.map((option, index) => (
-										<div key={index} className="flex items-center gap-2">
-											<span className="text-muted-foreground w-5 shrink-0 text-center text-xs font-bold">
-												{optionLabel(index)}
-											</span>
-											<Input
-												ref={(node) => {
-													optionInputRefs.current[index] = node;
-												}}
-												value={option}
-												onChange={(event) =>
-													setOptions((current) =>
-														current.map((item, itemIndex) =>
-															itemIndex === index ? event.target.value : item
-														)
-													)
-												}
-												placeholder={`Option ${optionLabel(index)}`}
-												onKeyDown={(event) =>
-													handleOptionInputTab(event, index)
-												}
-												disabled={!isQuestionEditUnlocked}
-												className="flex-1"
-											/>
-											<button
-												type="button"
-												onClick={() =>
-													setOptions((current) =>
-														current.length <= 2
-															? current
-															: current.filter(
-																	(_, itemIndex) => itemIndex !== index
-																)
-													)
-												}
-												disabled={
-													!isQuestionEditUnlocked || options.length <= 2
-												}
-												className="focus-visible:ring-primary/40 hover:border-destructive hover:text-destructive flex h-10 w-10 shrink-0 items-center justify-center border-2 border-zinc-700 text-zinc-500 transition-colors outline-none focus-visible:ring-4 disabled:opacity-30"
-												aria-label={`Remove option ${optionLabel(index)}`}
-											>
-												<X className="h-4 w-4" />
-											</button>
-										</div>
-									))}
-								</div>
-
-								<div className="flex items-center gap-3">
-									<span className="text-muted-foreground text-xs font-bold tracking-widest uppercase">
-										Points
-									</span>
-									<div className="flex items-center">
-										<button
-											type="button"
-											ref={decreasePointsButtonRef}
-											onClick={() =>
-												setPointValue((current) => Math.max(1, current - 1))
-											}
-											onKeyDown={handleDecreasePointsButtonTab}
-											disabled={!isQuestionEditUnlocked || pointValue <= 1}
-											className="focus-visible:ring-primary/40 hover:border-primary hover:text-primary flex h-10 w-10 items-center justify-center border-2 border-r-0 border-zinc-700 bg-black text-zinc-400 transition-colors outline-none focus-visible:ring-4 disabled:opacity-30"
-											aria-label="Decrease point value"
-										>
-											<Minus className="h-4 w-4" />
-										</button>
-										<div className="flex h-10 min-w-[3rem] items-center justify-center border-2 border-zinc-700 bg-zinc-900 px-3">
-											<span className="text-foreground text-lg font-bold tabular-nums">
-												{pointValue}
-											</span>
-										</div>
-										<button
-											type="button"
-											onClick={() => setPointValue((current) => current + 1)}
-											disabled={!isQuestionEditUnlocked}
-											className="focus-visible:ring-primary/40 hover:border-primary hover:text-primary flex h-10 w-10 items-center justify-center border-2 border-l-0 border-zinc-700 bg-black text-zinc-400 transition-colors outline-none focus-visible:ring-4 disabled:opacity-30"
-											aria-label="Increase point value"
-										>
-											<Plus className="h-4 w-4" />
-										</button>
-									</div>
-								</div>
-
-								<div className="flex items-center gap-3">
-									<Button
-										type="submit"
-										className="flex-1"
-										disabled={isSaving || !isQuestionEditUnlocked}
-									>
-										{isSaving
-											? "Saving..."
-											: editingQuestionId
-												? "Update question"
-												: "Add question"}
-									</Button>
-									{!isFormPristine ? (
-										<Button
-											type="button"
-											variant="outline"
-											onClick={() => setIsClearFormConfirmOpen(true)}
-											disabled={!isQuestionEditUnlocked}
-										>
-											Clear
-										</Button>
-									) : null}
-								</div>
-							</form>
-
-							<div className="border-2 border-zinc-800 bg-zinc-950 p-4 sm:p-5">
-								<div className="flex items-center justify-between gap-3">
-									<div>
-										<SectionEyebrow className="mb-2">
-											Current stack
-										</SectionEyebrow>
-										<p className="text-sm leading-relaxed font-medium text-zinc-400 uppercase">
-											Review the question set exactly as the admin workflow will
-											use it.
-										</p>
-									</div>
-								</div>
-
-								<div className="mt-5 grid gap-3">
-									{orderedQuestions.length === 0 ? (
-										<InlineNotice tone="warning">
-											No questions yet. Add at least one to unlock publishing.
-										</InlineNotice>
-									) : (
-										orderedQuestions.map((question, index) => (
-											<div
-												key={question._id}
-												className="rounded-xl border border-zinc-800 bg-black/70 p-4"
-											>
-												<div className="flex items-start justify-between gap-3">
-													<div className="min-w-0 flex-1">
-														<div className="flex items-center gap-3">
-															<span className="text-muted-foreground shrink-0 text-xs font-bold tracking-widest">
-																Q{index + 1}
-															</span>
-															<h3 className="text-foreground text-base leading-6 font-semibold">
-																{question.text}
-															</h3>
-														</div>
-														<div className="mt-2 flex flex-wrap items-center gap-3 text-xs font-bold text-zinc-500 uppercase">
-															<span>{question.options.length} options</span>
-															<span>
-																{question.pointValue}{" "}
-																{question.pointValue === 1 ? "pt" : "pts"}
-															</span>
-															{question.correctOptionIndex !== null ? (
-																<span className="text-emerald-400">
-																	Marked{" "}
-																	{optionLabel(question.correctOptionIndex)}
-																</span>
-															) : null}
-														</div>
-													</div>
-													{isQuestionEditUnlocked ? (
-														<div className="flex shrink-0 items-center gap-1">
-															<button
-																type="button"
-																onClick={() => beginEditing(question)}
-																className="focus-visible:ring-primary/40 hover:border-primary hover:text-primary flex h-9 w-9 items-center justify-center border-2 border-zinc-700 text-zinc-400 transition-colors outline-none focus-visible:ring-4"
-																aria-label={`Edit question ${index + 1}`}
-															>
-																<Pencil className="h-3.5 w-3.5" />
-															</button>
-															<button
-																type="button"
-																onClick={() => setDeleteTarget(question)}
-																className="focus-visible:ring-primary/40 hover:border-destructive hover:text-destructive flex h-9 w-9 items-center justify-center border-2 border-zinc-700 text-zinc-400 transition-colors outline-none focus-visible:ring-4"
-																aria-label={`Delete question ${index + 1}`}
-															>
-																<Trash2 className="h-3.5 w-3.5" />
-															</button>
-														</div>
-													) : null}
-												</div>
-											</div>
-										))
-									)}
-								</div>
-							</div>
-						</div>
-					</GlassCard>
+					<QuestionSetupSection
+						editingQuestionId={editingQuestionId}
+						questionCount={questionCount}
+						isQuestionEditUnlocked={isQuestionEditUnlocked}
+						challengeStatus={challenge.status}
+						questionText={questionText}
+						options={options}
+						pointValue={pointValue}
+						isSaving={isSaving}
+						isFormPristine={isFormPristine}
+						orderedQuestions={orderedQuestions}
+						questionInputRef={questionInputRef}
+						optionInputRefs={optionInputRefs}
+						addOptionButtonRef={addOptionButtonRef}
+						decreasePointsButtonRef={decreasePointsButtonRef}
+						onQuestionTextChange={setQuestionText}
+						onQuestionInputTab={handleQuestionInputTab}
+						onOptionChange={(index, value) =>
+							setOptions((current) =>
+								current.map((item, itemIndex) =>
+									itemIndex === index ? value : item
+								)
+							)
+						}
+						onOptionInputTab={handleOptionInputTab}
+						onAddOption={() => setOptions((current) => [...current, ""])}
+						onAddOptionButtonTab={handleAddOptionButtonTab}
+						onRemoveOption={(index) =>
+							setOptions((current) =>
+								current.length <= 2
+									? current
+									: current.filter((_, itemIndex) => itemIndex !== index)
+							)
+						}
+						onDecreasePoints={() =>
+							setPointValue((current) => Math.max(1, current - 1))
+						}
+						onDecreasePointsButtonTab={handleDecreasePointsButtonTab}
+						onIncreasePoints={() => setPointValue((current) => current + 1)}
+						onSubmit={handleSaveQuestion}
+						onClear={() => setIsClearFormConfirmOpen(true)}
+						onBeginEditing={beginEditing}
+						onDeleteQuestion={setDeleteTarget}
+					/>
 				</section>
-
-				<GlassCard className="px-5 py-6 sm:px-8">
-					<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-						<div className="max-w-2xl">
-							<SectionEyebrow>Publish & run</SectionEyebrow>
-							<h2 className="font-display text-foreground text-3xl">
-								{runtimeTitle}
-							</h2>
-							<p className="mt-2 text-sm leading-relaxed font-medium text-zinc-400 uppercase">
-								{runtimeDescription}
-							</p>
-						</div>
-						<MetricPill
-							label="Players"
-							value={`${participantCount}`}
-							className="sm:min-w-[12rem]"
-						/>
-					</div>
-
-					<div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-						<div className="grid gap-4">
-							{questionCount === 0 ? (
-								<InlineNotice tone="warning">
-									Add at least one question before publishing.
-								</InlineNotice>
-							) : null}
-							{challenge.winnersAnnouncedAt ? (
-								<InlineNotice tone="success">
-									Winners were announced on{" "}
-									{formatTimestamp(challenge.winnersAnnouncedAt)}.
-								</InlineNotice>
-							) : null}
-							<div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-								<p className="text-xs font-bold tracking-[0.2em] text-zinc-500 uppercase">
-									Runtime notes
-								</p>
-								<ul className="mt-3 grid gap-2 text-sm leading-relaxed font-medium text-zinc-300 uppercase">
-									<li>Publishing freezes the current question set.</li>
-									<li>
-										Answer marking only appears after submissions are locked.
-									</li>
-									<li>
-										Winner announcement appears only after every answer is
-										marked.
-									</li>
-								</ul>
-							</div>
-						</div>
-
-						<div className="grid gap-4">
-							{showRuntimeLink ? (
-								<div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-									<p className="text-xs font-bold tracking-[0.2em] text-zinc-500 uppercase">
-										Live challenge link
-									</p>
-									<Input
-										readOnly
-										value={shareUrl}
-										aria-label="Challenge share link"
-										className="mt-3"
-									/>
-								</div>
-							) : null}
-
-							{canUnpublishQuestions ? (
-								<Button
-									variant="outline"
-									className="w-full"
-									onClick={() => setIsUnpublishConfirmOpen(true)}
-								>
-									Unpublish questions
-								</Button>
-							) : null}
-
-							{canUnlockPredictions ? (
-								<Button
-									variant="outline"
-									className="w-full"
-									onClick={() => setIsUnlockConfirmOpen(true)}
-								>
-									<Unlock className="h-4 w-4" />
-									Unlock submissions
-								</Button>
-							) : null}
-						</div>
-					</div>
-				</GlassCard>
 
 				{leaderboard.podium.length > 0 ? (
 					<PodiumSection
@@ -1217,344 +779,80 @@ export function AdminChallengeRoute() {
 
 				{showScoringSection ? (
 					<section ref={scoringSectionRef}>
-						<GlassCard className="px-5 py-6 sm:px-8">
-							<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-								<div>
-									<SectionEyebrow>Answer marking</SectionEyebrow>
-									<h2 className="font-display text-foreground text-3xl">
-										Score the board
-									</h2>
-									<p className="mt-2 text-sm leading-relaxed font-medium text-zinc-400 uppercase">
-										Choose the correct option for each question. Results stay
-										draft-only until every answer is marked.
-									</p>
-								</div>
-								<MetricPill
-									label="Progress"
-									value={`${answeredCount}/${orderedQuestions.length}`}
-									className="sm:min-w-[12rem]"
-								/>
-							</div>
-
-							<div className="mt-6 grid gap-4">
-								{orderedQuestions.map((question) => (
-									<fieldset
-										key={question._id}
-										className="border-border bg-secondary/30 rounded-xl border p-4"
-										role="radiogroup"
-										aria-labelledby={`admin-score-${question._id}`}
-									>
-										<h3
-											id={`admin-score-${question._id}`}
-											className="text-foreground text-lg leading-7 font-semibold"
-										>
-											{question.text}
-										</h3>
-										<div className="mt-4 grid gap-3">
-											{question.options.map((option, optionIndex) => (
-												<OptionButton
-													key={option}
-													role="radio"
-													aria-checked={
-														question.correctOptionIndex === optionIndex
-													}
-													tabIndex={
-														question.correctOptionIndex === optionIndex ||
-														optionIndex === 0
-															? 0
-															: -1
-													}
-													onClick={() =>
-														handleMarkAnswer(
-															question._id.toString(),
-															optionIndex,
-															question.correctOptionIndex
-														)
-													}
-													onKeyDown={(event) =>
-														handleRadioOptionKeyDown(
-															event,
-															optionIndex,
-															question.options.length,
-															(nextIndex) =>
-																handleMarkAnswer(
-																	question._id.toString(),
-																	nextIndex,
-																	question.correctOptionIndex
-																)
-														)
-													}
-													correct={question.correctOptionIndex === optionIndex}
-												>
-													<span className="flex items-center gap-2">
-														{question.correctOptionIndex === optionIndex ? (
-															<Check className="h-4 w-4" />
-														) : null}
-														<span className="text-muted-foreground mr-1 font-mono text-xs">
-															{optionLabel(optionIndex)}.
-														</span>
-														{option}
-													</span>
-												</OptionButton>
-											))}
-										</div>
-									</fieldset>
-								))}
-							</div>
-
-							{!allQuestionsScored ? (
-								<InlineNotice tone="warning" className="mt-6">
-									Keep marking answers below. Winner announcement stays hidden
-									until every question is scored.
-								</InlineNotice>
-							) : submittedCount === 0 ? (
-								<InlineNotice tone="warning" className="mt-6">
-									All questions are scored, but at least one submitted player is
-									required before winners can be announced.
-								</InlineNotice>
-							) : null}
-
-							<div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-								<Button variant="outline" asChild className="w-full sm:w-auto">
-									<a href={leaderboardUrl} className="no-underline">
-										Open leaderboard
-									</a>
-								</Button>
-								<div className="flex flex-col gap-3 sm:ml-auto sm:flex-row">
-									<Button
-										variant="outline"
-										className="w-full sm:w-auto"
-										onClick={() => setIsClearMarkingsConfirmOpen(true)}
-										disabled={answeredCount === 0 || isClearingMarkings}
-									>
-										Clear answer markings
-									</Button>
-									{canAnnounceWinners ? (
-										<Button
-											className="w-full sm:w-auto"
-											onClick={() => setIsAnnounceConfirmOpen(true)}
-										>
-											Announce winners
-										</Button>
-									) : null}
-								</div>
-							</div>
-						</GlassCard>
+						<ScoringSection
+							orderedQuestions={orderedQuestions}
+							answeredCount={answeredCount}
+							submittedCount={submittedCount}
+							canAnnounceWinners={canAnnounceWinners}
+							isClearingMarkings={isClearingMarkings}
+							leaderboardUrl={leaderboardUrl}
+							onMarkAnswer={handleMarkAnswer}
+							onClearMarkings={() => setIsClearMarkingsConfirmOpen(true)}
+							onAnnounceWinners={() => setIsAnnounceConfirmOpen(true)}
+						/>
 					</section>
 				) : null}
+
+				<RuntimeSection
+					runtimeTitle={runtimeTitle}
+					runtimeDescription={runtimeDescription}
+					participantCount={participantCount}
+					questionCount={questionCount}
+					winnersAnnouncedAt={challenge.winnersAnnouncedAt ?? null}
+					showRuntimeLink={showRuntimeLink}
+					shareUrl={shareUrl}
+					canUnpublishQuestions={canUnpublishQuestions}
+					canUnlockPredictions={canUnlockPredictions}
+					canCancelChallenge={canCancelChallenge}
+					onUnpublishQuestions={() => setIsUnpublishConfirmOpen(true)}
+					onUnlockSubmissions={() => setIsUnlockConfirmOpen(true)}
+					onCancelChallenge={() => setIsCancelChallengeConfirmOpen(true)}
+					formatTimestamp={formatTimestamp}
+				/>
 			</PageShell>
 
-			<BottomSheet
-				open={deleteTarget !== null}
-				onClose={() => setDeleteTarget(null)}
-				title="Delete question?"
-				description="This removes the pick card from the draft challenge."
-				footer={
-					<>
-						<Button
-							variant="destructive"
-							className="w-full"
-							onClick={handleDeleteQuestion}
-						>
-							Delete question
-						</Button>
-						<Button
-							variant="outline"
-							className="w-full"
-							onClick={() => setDeleteTarget(null)}
-						>
-							Keep it
-						</Button>
-					</>
-				}
+			<AdminDialogs
+				deleteTargetLabel={deleteTarget?.text ?? null}
+				isShareSheetOpen={isShareSheetOpen}
+				shareUrl={shareUrl}
+				isSharing={isSharing}
+				isClearFormConfirmOpen={isClearFormConfirmOpen}
+				isAnnounceConfirmOpen={isAnnounceConfirmOpen}
+				isAnnouncing={isAnnouncing}
+				isUnpublishConfirmOpen={isUnpublishConfirmOpen}
+				isUnpublishing={isUnpublishing}
+				isClearMarkingsConfirmOpen={isClearMarkingsConfirmOpen}
+				isClearingMarkings={isClearingMarkings}
+				isLockConfirmOpen={isLockConfirmOpen}
+				isLocking={isLocking}
+				isUnlockConfirmOpen={isUnlockConfirmOpen}
+				isUnlocking={isUnlocking}
+				isCancelChallengeConfirmOpen={isCancelChallengeConfirmOpen}
+				isCancellingChallenge={isCancellingChallenge}
+				challengeTitle={challenge.title}
+				onDeleteTargetChange={(open) => {
+					if (!open) {
+						setDeleteTarget(null);
+					}
+				}}
+				onDeleteQuestion={handleDeleteQuestion}
+				onShareSheetChange={setIsShareSheetOpen}
+				onShare={handleShare}
+				onClearFormConfirmChange={setIsClearFormConfirmOpen}
+				onClearForm={handleClearForm}
+				onAnnounceConfirmChange={setIsAnnounceConfirmOpen}
+				onAnnounceWinners={handleAnnounceWinners}
+				onUnpublishConfirmChange={setIsUnpublishConfirmOpen}
+				onUnpublish={handleUnpublish}
+				onClearMarkingsConfirmChange={setIsClearMarkingsConfirmOpen}
+				onClearAnswerMarkings={handleClearAnswerMarkings}
+				onLockConfirmChange={setIsLockConfirmOpen}
+				onLockPredictions={handleLockPredictions}
+				onUnlockConfirmChange={setIsUnlockConfirmOpen}
+				onUnlockPredictions={handleUnlockPredictions}
+				onCancelChallengeConfirmChange={setIsCancelChallengeConfirmOpen}
+				onCancelChallenge={handleCancelChallenge}
 			/>
-
-			<BottomSheet
-				open={isShareSheetOpen}
-				onClose={() => setIsShareSheetOpen(false)}
-				title="Share challenge"
-				description="On mobile this uses the native share sheet. Desktop falls back to clipboard."
-				footer={
-					<>
-						<Button
-							className="w-full"
-							onClick={handleShare}
-							disabled={isSharing}
-						>
-							{isSharing ? "Sharing..." : "Share now"}
-						</Button>
-						<Button
-							variant="outline"
-							className="w-full"
-							onClick={() => setIsShareSheetOpen(false)}
-						>
-							Cancel
-						</Button>
-					</>
-				}
-			>
-				<Input readOnly value={shareUrl} aria-label="Challenge share link" />
-			</BottomSheet>
-
-			<AlertDialog
-				open={isClearFormConfirmOpen}
-				onOpenChange={setIsClearFormConfirmOpen}
-			>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>Clear form?</AlertDialogTitle>
-						<AlertDialogDescription>
-							This only resets the question composer fields on this screen. It
-							does not delete any saved challenge questions.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel className="w-full sm:w-auto">
-							Keep editing
-						</AlertDialogCancel>
-						<AlertDialogAction
-							variant="destructive"
-							className="w-full sm:w-auto"
-							onClick={handleClearForm}
-						>
-							Yes, clear form
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
-
-			<AlertDialog
-				open={isAnnounceConfirmOpen}
-				onOpenChange={setIsAnnounceConfirmOpen}
-			>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>Announce winners?</AlertDialogTitle>
-						<AlertDialogDescription>
-							This will lock the challenge, snapshot the current top three, and
-							switch players into the final results experience.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel className="w-full sm:w-auto">
-							Not yet
-						</AlertDialogCancel>
-						<AlertDialogAction
-							className="w-full sm:w-auto"
-							onClick={handleAnnounceWinners}
-							disabled={isAnnouncing}
-						>
-							{isAnnouncing ? "Announcing..." : "Announce winners"}
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
-
-			<AlertDialog
-				open={isUnpublishConfirmOpen}
-				onOpenChange={setIsUnpublishConfirmOpen}
-			>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>Unpublish questions?</AlertDialogTitle>
-						<AlertDialogDescription>
-							This hides the challenge questions from players while you edit
-							them. Republish once the updated question set is ready.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel className="w-full sm:w-auto">
-							Keep published
-						</AlertDialogCancel>
-						<AlertDialogAction
-							className="w-full sm:w-auto"
-							onClick={handleUnpublish}
-							disabled={isUnpublishing}
-						>
-							{isUnpublishing ? "Unpublishing..." : "Unpublish"}
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
-
-			<AlertDialog
-				open={isClearMarkingsConfirmOpen}
-				onOpenChange={setIsClearMarkingsConfirmOpen}
-			>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>Clear answer markings?</AlertDialogTitle>
-						<AlertDialogDescription>
-							This will remove all currently marked correct answers so you can
-							rescore from scratch.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel className="w-full sm:w-auto">
-							Keep markings
-						</AlertDialogCancel>
-						<AlertDialogAction
-							variant="destructive"
-							className="w-full sm:w-auto"
-							onClick={handleClearAnswerMarkings}
-							disabled={isClearingMarkings}
-						>
-							{isClearingMarkings ? "Clearing..." : "Clear markings"}
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
-
-			<AlertDialog open={isLockConfirmOpen} onOpenChange={setIsLockConfirmOpen}>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>Lock predictions?</AlertDialogTitle>
-						<AlertDialogDescription>
-							Players will no longer be able to join or submit predictions. Use
-							this when the match starts.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel className="w-full sm:w-auto">
-							Keep open
-						</AlertDialogCancel>
-						<AlertDialogAction
-							className="w-full sm:w-auto"
-							onClick={handleLockPredictions}
-							disabled={isLocking}
-						>
-							{isLocking ? "Locking..." : "Lock predictions"}
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
-
-			<AlertDialog
-				open={isUnlockConfirmOpen}
-				onOpenChange={setIsUnlockConfirmOpen}
-			>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>Unlock predictions?</AlertDialogTitle>
-						<AlertDialogDescription>
-							Players will be able to join and submit again. Only possible when
-							no answers have been marked yet.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel className="w-full sm:w-auto">
-							Keep locked
-						</AlertDialogCancel>
-						<AlertDialogAction
-							className="w-full sm:w-auto"
-							onClick={handleUnlockPredictions}
-							disabled={isUnlocking}
-						>
-							{isUnlocking ? "Unlocking..." : "Unlock predictions"}
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
 		</>
 	);
 }
@@ -1566,69 +864,6 @@ function AdminChallengeSkeleton() {
 			<SkeletonBlock className="h-96" />
 			<SkeletonBlock className="h-80" />
 		</PageShell>
-	);
-}
-
-function WorkflowStepCard({
-	index,
-	label,
-	description,
-	state,
-}: {
-	index: number;
-	label: string;
-	description: string;
-	state: AdminWorkflowStepState;
-}) {
-	const stepStyles: Record<
-		AdminWorkflowStepState,
-		{ card: string; badge: string; label: string }
-	> = {
-		complete: {
-			card: "border-emerald-400/50 bg-emerald-400/10",
-			badge: "border-emerald-400 text-emerald-400",
-			label: "Complete",
-		},
-		current: {
-			card: "border-primary bg-primary/10",
-			badge: "border-primary text-primary",
-			label: "Current",
-		},
-		upcoming: {
-			card: "border-zinc-800 bg-black/50",
-			badge: "border-zinc-700 text-zinc-500",
-			label: "Upcoming",
-		},
-	};
-	const {
-		card: stateClassName,
-		badge: badgeClassName,
-		label: stateLabel,
-	} = stepStyles[state];
-
-	return (
-		<div className={`rounded-xl border p-4 ${stateClassName}`}>
-			<div className="flex items-start justify-between gap-3">
-				<div className="flex items-center gap-3">
-					<div
-						className={`flex h-9 w-9 items-center justify-center border text-sm font-black ${badgeClassName}`}
-					>
-						{index}
-					</div>
-					<div>
-						<p className="text-foreground text-sm font-bold tracking-wide uppercase">
-							{label}
-						</p>
-						<p className="mt-1 text-[11px] font-bold tracking-[0.2em] text-zinc-500 uppercase">
-							{stateLabel}
-						</p>
-					</div>
-				</div>
-			</div>
-			<p className="mt-4 text-sm leading-relaxed font-medium text-zinc-300 uppercase">
-				{description}
-			</p>
-		</div>
 	);
 }
 

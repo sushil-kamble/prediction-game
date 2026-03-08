@@ -4,8 +4,23 @@ import { Dialog as SheetPrimitive } from "radix-ui"
 
 import { cn } from "#/lib/utils"
 
-function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
-  return <SheetPrimitive.Root data-slot="sheet" {...props} />
+const SheetContext = React.createContext<{
+  onOpenChange?: (open: boolean) => void
+}>({})
+
+function Sheet({
+  onOpenChange,
+  ...props
+}: React.ComponentProps<typeof SheetPrimitive.Root>) {
+  return (
+    <SheetContext.Provider value={{ onOpenChange }}>
+      <SheetPrimitive.Root
+        data-slot="sheet"
+        onOpenChange={onOpenChange}
+        {...props}
+      />
+    </SheetContext.Provider>
+  )
 }
 
 function SheetTrigger({
@@ -52,9 +67,11 @@ function SheetContent({
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
 }) {
+  const { onOpenChange } = React.useContext(SheetContext)
+
   return (
     <SheetPortal>
-      <SheetOverlay />
+      <SheetOverlay onClick={() => onOpenChange?.(false)} />
       <SheetPrimitive.Content
         data-slot="sheet-content"
         className={cn(

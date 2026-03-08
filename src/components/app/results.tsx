@@ -317,12 +317,7 @@ export function PodiumSection({
 							(winnersAnnounced ? "The medal table" : "The board to chase")}
 					</h2>
 				</div>
-				{!winnersAnnounced ? (
-					<p className="max-w-sm text-xs font-bold tracking-widest text-zinc-500 uppercase">
-						Preview only. Final winners locked on announcement.
-					</p>
-				) : null}
-			</div>
+				</div>
 
 			<div className="mt-6 grid gap-4 sm:grid-cols-3">
 				{podium.map((entry, index) => (

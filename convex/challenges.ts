@@ -998,6 +998,26 @@ export const joinChallenge = mutation({
 				return existing._id;
 			}
 
+			const participants = await ctx.db
+				.query("prediction_participants")
+				.withIndex("by_challenge", (q) => q.eq("challengeId", challengeId))
+				.collect();
+
+			if (participants.length >= 100) {
+				throw new Error(
+					"This challenge has reached the maximum of 100 players."
+				);
+			}
+
+			const nicknameLower = nickname.toLowerCase();
+			if (
+				participants.some((p) => p.nickname.toLowerCase() === nicknameLower)
+			) {
+				throw new Error(
+					"That nickname is already taken in this challenge."
+				);
+			}
+
 			if (usernameLower) {
 				const existingUsername = await ctx.db
 					.query("prediction_participants")
@@ -1135,8 +1155,8 @@ export const submitPredictions = mutation({
 				throw new Error("This challenge has no questions.");
 			}
 
-			if (args.predictions.length !== questions.length) {
-				throw new Error("Submit one prediction for every question.");
+			if (args.predictions.length === 0) {
+				throw new Error("Submit at least one prediction.");
 			}
 
 			const questionMap = new Map<
@@ -1177,10 +1197,6 @@ export const submitPredictions = mutation({
 					question.options,
 					"Selected option"
 				);
-			}
-
-			if (seenQuestionIds.size !== questions.length) {
-				throw new Error("Submit one prediction for every question.");
 			}
 
 			const submittedAt = Date.now();
@@ -1487,11 +1503,21 @@ export const closeChallenge = mutation({
 				throw new Error("Challenge not found.");
 			}
 
-			await requireAdminChallenge(
+			const challenge = await requireAdminChallenge(
 				ctx,
 				challengeId,
 				requireTrimmed(args.adminSecret, "Admin secret")
 			);
+
+			if (challenge.winnersAnnouncedAt) {
+				throw new Error(
+					"Winners have already been announced for this challenge."
+				);
+			}
+			if (challenge.status === "closed") {
+				throw new Error("This challenge is already closed.");
+			}
+
 			await ctx.db.patch(challengeId, {
 				status: "closed",
 				questionEditUnlocked: false,

@@ -157,6 +157,14 @@ export function pickWinnerMessage(
 	return orderedPool[hashStableValue(seed) % orderedPool.length];
 }
 
+function getRelativeSubmissionTime(participant: RankedParticipant) {
+	if (participant.submittedAt === null) {
+		return Number.MAX_SAFE_INTEGER;
+	}
+
+	return Math.max(participant.submittedAt - participant.joinedAt, 0);
+}
+
 export function buildLeaderboardRows({
 	participants,
 	questions,
@@ -215,14 +223,14 @@ export function buildLeaderboardRows({
 				return right.score - left.score;
 			}
 
-			if (right.correctCount !== left.correctCount) {
-				return right.correctCount - left.correctCount;
+			if (right.totalAnswered !== left.totalAnswered) {
+				return right.totalAnswered - left.totalAnswered;
 			}
 
-			const leftSubmittedAt = left.submittedAt ?? Number.MAX_SAFE_INTEGER;
-			const rightSubmittedAt = right.submittedAt ?? Number.MAX_SAFE_INTEGER;
-			if (leftSubmittedAt !== rightSubmittedAt) {
-				return leftSubmittedAt - rightSubmittedAt;
+			const leftRelativeSubmissionTime = getRelativeSubmissionTime(left);
+			const rightRelativeSubmissionTime = getRelativeSubmissionTime(right);
+			if (leftRelativeSubmissionTime !== rightRelativeSubmissionTime) {
+				return leftRelativeSubmissionTime - rightRelativeSubmissionTime;
 			}
 
 			if (left.nickname !== right.nickname) {

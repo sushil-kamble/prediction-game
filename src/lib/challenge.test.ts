@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+	answeredCorrectCount,
 	canUnpublishChallengeQuestions,
 	getAdminWorkflow,
 	getPlayerChallengeBlocker,
+	getRuntimeCopy,
 	toggleCorrectOptionIndex,
 } from "./challenge";
 
-describe("challenge workflow helpers", () => {
+describe("getAdminWorkflow", () => {
 	it("starts the admin flow with question setup for an empty draft", () => {
 		const workflow = getAdminWorkflow({
 			status: "draft",
@@ -186,9 +188,32 @@ describe("challenge workflow helpers", () => {
 			true
 		);
 	});
+
+	it("keeps a closed but unannounced challenge fully complete and non-actionable", () => {
+		const workflow = getAdminWorkflow({
+			status: "closed",
+			questionCount: 2,
+			questionsPublished: true,
+			scoredCount: 1,
+			totalQuestions: 2,
+			hasSubmissions: false,
+			winnersAnnounced: false,
+		});
+
+		expect(workflow.title).toBe("This challenge was cancelled");
+		expect(workflow.primaryAction).toBeNull();
+		expect(workflow.steps.map((step) => step.state)).toStrictEqual([
+			"complete",
+			"complete",
+			"complete",
+			"complete",
+			"complete",
+			"complete",
+		]);
+	});
 });
 
-describe("player challenge blockers", () => {
+describe("getPlayerChallengeBlocker", () => {
 	it("blocks unpublished drafts from players", () => {
 		expect(
 			getPlayerChallengeBlocker({
@@ -214,13 +239,166 @@ describe("player challenge blockers", () => {
 		});
 	});
 
-	it("allows players through when the challenge is live and published", () => {
+	it("allows players through once the challenge is live and published", () => {
 		expect(
 			getPlayerChallengeBlocker({
 				status: "open",
 				questionEditUnlocked: false,
 			})
 		).toBeNull();
+	});
+
+	it("does not block scoring and closed states by itself", () => {
+		expect(
+			getPlayerChallengeBlocker({
+				status: "scoring",
+				questionEditUnlocked: false,
+			})
+		).toBeNull();
+		expect(
+			getPlayerChallengeBlocker({
+				status: "closed",
+				questionEditUnlocked: false,
+			})
+		).toBeNull();
+	});
+});
+
+describe("getRuntimeCopy", () => {
+	const formatTs = (timestamp: number) => `formatted-${timestamp}`;
+
+	it("describes a draft without questions", () => {
+		expect(
+			getRuntimeCopy({
+				status: "draft",
+				isQuestionEditUnlocked: true,
+				questionCount: 0,
+				allQuestionsScored: false,
+				winnersAnnouncedAt: null,
+				formatTs,
+			})
+		).toStrictEqual({
+			title: "Publishing will freeze the question set",
+			description:
+				"Add at least one question before publishing. Once published, the current question set is frozen for players.",
+		});
+	});
+
+	it("describes a draft with a ready question set", () => {
+		expect(
+			getRuntimeCopy({
+				status: "draft",
+				isQuestionEditUnlocked: true,
+				questionCount: 3,
+				allQuestionsScored: false,
+				winnersAnnouncedAt: null,
+				formatTs,
+			})
+		).toStrictEqual({
+			title: "Publishing will freeze the question set",
+			description:
+				"The current question set is ready. Publishing will open the player link and freeze these questions for prediction.",
+		});
+	});
+
+	it("describes unpublished live questions", () => {
+		expect(
+			getRuntimeCopy({
+				status: "open",
+				isQuestionEditUnlocked: true,
+				questionCount: 3,
+				allQuestionsScored: false,
+				winnersAnnouncedAt: null,
+				formatTs,
+			})
+		).toStrictEqual({
+			title: "Questions are unpublished",
+			description:
+				"Players cannot view or answer these questions right now. Republish when the updated question set is ready to go live again.",
+		});
+	});
+
+	it("describes an open live challenge", () => {
+		expect(
+			getRuntimeCopy({
+				status: "open",
+				isQuestionEditUnlocked: false,
+				questionCount: 3,
+				allQuestionsScored: false,
+				winnersAnnouncedAt: null,
+				formatTs,
+			})
+		).toStrictEqual({
+			title: "The challenge is live",
+			description:
+				"Players can join and submit predictions. Answer marking stays hidden until you lock submissions.",
+		});
+	});
+
+	it("describes scoring before all answers are marked", () => {
+		expect(
+			getRuntimeCopy({
+				status: "scoring",
+				isQuestionEditUnlocked: false,
+				questionCount: 3,
+				allQuestionsScored: false,
+				winnersAnnouncedAt: null,
+				formatTs,
+			})
+		).toStrictEqual({
+			title: "Submissions are locked",
+			description:
+				"No new submissions are allowed. Mark each answer below to complete the board.",
+		});
+	});
+
+	it("describes scoring after all answers are marked", () => {
+		expect(
+			getRuntimeCopy({
+				status: "scoring",
+				isQuestionEditUnlocked: false,
+				questionCount: 3,
+				allQuestionsScored: true,
+				winnersAnnouncedAt: null,
+				formatTs,
+			})
+		).toStrictEqual({
+			title: "Submissions are locked",
+			description:
+				"Every question is scored. If players submitted picks, you can finish by announcing winners.",
+		});
+	});
+
+	it("describes a finalized challenge with winner timestamp", () => {
+		expect(
+			getRuntimeCopy({
+				status: "closed",
+				isQuestionEditUnlocked: false,
+				questionCount: 3,
+				allQuestionsScored: true,
+				winnersAnnouncedAt: 123,
+				formatTs,
+			})
+		).toStrictEqual({
+			title: "The challenge is finalized",
+			description: "Winners were announced on formatted-123.",
+		});
+	});
+
+	it("describes a cancelled challenge without winner timestamp", () => {
+		expect(
+			getRuntimeCopy({
+				status: "closed",
+				isQuestionEditUnlocked: false,
+				questionCount: 3,
+				allQuestionsScored: false,
+				winnersAnnouncedAt: null,
+				formatTs,
+			})
+		).toStrictEqual({
+			title: "The challenge was cancelled",
+			description: "This challenge was closed without announcing winners.",
+		});
 	});
 });
 
@@ -254,6 +432,18 @@ describe("admin lifecycle guard helpers", () => {
 				questionEditUnlocked: true,
 			})
 		).toBe(false);
+	});
+
+	it("counts only explicitly marked answers", () => {
+		expect(
+			answeredCorrectCount([
+				{ correctOptionIndex: null },
+				{ correctOptionIndex: 0 },
+				{ correctOptionIndex: 2 },
+				{},
+				{ correctOptionIndex: undefined },
+			])
+		).toBe(2);
 	});
 
 	it("toggles a marked answer off when the same option is selected again", () => {

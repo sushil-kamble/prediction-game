@@ -256,6 +256,8 @@ export function BottomSheet({
 		<Sheet open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
 			<SheetContent
 				side="bottom"
+				onPointerDownOutside={onClose}
+				onEscapeKeyDown={onClose}
 				className="max-h-[90vh] overflow-y-auto border-t-4 border-r-4 border-l-4 border-white bg-black px-6 py-6 sm:mx-auto sm:max-w-2xl"
 			>
 				<div className="mb-5 flex justify-center">

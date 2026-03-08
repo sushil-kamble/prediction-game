@@ -33,7 +33,7 @@ describe("game-results identity validation", () => {
 });
 
 describe("game-results ranking", () => {
-	it("breaks ties using earlier final submission time", () => {
+	it("ranks higher scores above all tie-breakers", () => {
 		const rows = buildLeaderboardRows({
 			participants: [
 				{
@@ -41,7 +41,7 @@ describe("game-results ranking", () => {
 					nickname: "Alpha",
 					uuid: "uuid-1",
 					joinedAt: 1,
-					submittedAt: 200,
+					submittedAt: 500,
 				},
 				{
 					participantId: "p2",
@@ -55,6 +55,144 @@ describe("game-results ranking", () => {
 					nickname: "Charlie",
 					uuid: "uuid-3",
 					joinedAt: 3,
+					submittedAt: 300,
+				},
+			],
+			questions: [
+				{
+					questionId: "q1",
+					pointValue: 5,
+					correctOptionIndex: 0,
+				},
+				{
+					questionId: "q2",
+					pointValue: 5,
+					correctOptionIndex: 1,
+				},
+			],
+			predictions: [
+				{
+					participantId: "p1",
+					questionId: "q1",
+					selectedOptionIndex: 0,
+				},
+				{
+					participantId: "p1",
+					questionId: "q2",
+					selectedOptionIndex: 1,
+				},
+				{
+					participantId: "p2",
+					questionId: "q1",
+					selectedOptionIndex: 0,
+				},
+				{
+					participantId: "p3",
+					questionId: "q1",
+					selectedOptionIndex: 1,
+				},
+			],
+		});
+
+		expect(rows.map((row) => row.participantId)).toStrictEqual([
+			"p1",
+			"p2",
+			"p3",
+		]);
+		expect(rows.map((row) => row.score)).toStrictEqual([10, 5, 0]);
+	});
+
+	it("prefers players who answered more questions when scores are tied", () => {
+		const rows = buildLeaderboardRows({
+			participants: [
+				{
+					participantId: "p1",
+					nickname: "Alpha",
+					uuid: "uuid-1",
+					joinedAt: 0,
+					submittedAt: 800,
+				},
+				{
+					participantId: "p2",
+					nickname: "Bravo",
+					uuid: "uuid-2",
+					joinedAt: 0,
+					submittedAt: 200,
+				},
+				{
+					participantId: "p3",
+					nickname: "Charlie",
+					uuid: "uuid-3",
+					joinedAt: 0,
+					submittedAt: 400,
+				},
+			],
+			questions: [
+				{
+					questionId: "q1",
+					pointValue: 5,
+					correctOptionIndex: 0,
+				},
+				{
+					questionId: "q2",
+					pointValue: 5,
+					correctOptionIndex: 1,
+				},
+			],
+			predictions: [
+				{
+					participantId: "p1",
+					questionId: "q1",
+					selectedOptionIndex: 0,
+				},
+				{
+					participantId: "p1",
+					questionId: "q2",
+					selectedOptionIndex: 0,
+				},
+				{
+					participantId: "p2",
+					questionId: "q1",
+					selectedOptionIndex: 0,
+				},
+				{
+					participantId: "p3",
+					questionId: "q1",
+					selectedOptionIndex: 1,
+				},
+			],
+		});
+
+		expect(rows.map((row) => row.participantId)).toStrictEqual([
+			"p1",
+			"p2",
+			"p3",
+		]);
+		expect(rows.map((row) => row.totalAnswered)).toStrictEqual([2, 1, 1]);
+	});
+
+	it("breaks remaining ties using faster time from join to submission", () => {
+		const rows = buildLeaderboardRows({
+			participants: [
+				{
+					participantId: "p1",
+					nickname: "Alpha",
+					uuid: "uuid-1",
+					joinedAt: 0,
+					submittedAt: 200,
+				},
+				{
+					participantId: "p2",
+					nickname: "Bravo",
+					uuid: "uuid-2",
+					joinedAt: 1_000,
+					submittedAt: 1_100,
+				},
+				{
+					participantId: "p3",
+					nickname: "Charlie",
+					uuid: "uuid-3",
+					joinedAt: 0,
 					submittedAt: 300,
 				},
 			],
@@ -84,15 +222,16 @@ describe("game-results ranking", () => {
 			],
 		});
 
-		expect(rows.map((row) => row.participantId)).toStrictEqual(["p2", "p1", "p3"]);
+		expect(rows.map((row) => row.participantId)).toStrictEqual([
+			"p2",
+			"p1",
+			"p3",
+		]);
 		expect(rows.map((row) => row.medal)).toStrictEqual([
 			"gold",
 			"silver",
 			"bronze",
 		]);
-		expect(rows[0]?.rank).toBe(1);
-		expect(rows[1]?.rank).toBe(2);
-		expect(rows[2]?.rank).toBe(3);
 	});
 });
 
