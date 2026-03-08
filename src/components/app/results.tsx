@@ -102,6 +102,39 @@ const medalTheme = {
 	},
 };
 
+const podiumLayout = {
+	gold: {
+		columnOrder: "order-1 md:order-2",
+		columnWidth: "md:flex-[1.08]",
+		platformHeight: "h-[4.5rem] md:h-24",
+		platformGlow: "shadow-[0_-18px_42px_rgba(250,204,21,0.16)]",
+		cardLift: "md:-mb-2",
+	},
+	silver: {
+		columnOrder: "order-2 md:order-1",
+		columnWidth: "md:flex-[0.96]",
+		platformHeight: "h-12 md:h-16",
+		platformGlow: "shadow-[0_-12px_30px_rgba(226,232,240,0.14)]",
+		cardLift: "md:-mb-1",
+	},
+	bronze: {
+		columnOrder: "order-3 md:order-3",
+		columnWidth: "md:flex-[0.96]",
+		platformHeight: "h-8 md:h-12",
+		platformGlow: "shadow-[0_-10px_26px_rgba(180,83,9,0.14)]",
+		cardLift: "",
+	},
+} satisfies Record<
+	MedalTier,
+	{
+		columnOrder: string;
+		columnWidth: string;
+		platformHeight: string;
+		platformGlow: string;
+		cardLift: string;
+	}
+>;
+
 /* ── Medal Badge ── */
 
 export function MedalBadge({
@@ -317,9 +350,9 @@ export function PodiumSection({
 							(winnersAnnounced ? "The medal table" : "The board to chase")}
 					</h2>
 				</div>
-				</div>
+			</div>
 
-			<div className="mt-6 grid gap-4 sm:grid-cols-3">
+			<div className="mt-6 flex flex-col gap-4 md:flex-row md:items-end md:gap-5">
 				{podium.map((entry, index) => (
 					<PodiumCard
 						key={`${entry.medal}-${entry.nickname}-${entry.rank}`}
@@ -345,95 +378,129 @@ function PodiumCard({
 	index: number;
 }) {
 	const theme = medalTheme[entry.medal];
+	const layout = podiumLayout[entry.medal];
 	const isGold = entry.medal === "gold";
 
 	return (
 		<div
 			className={cn(
-				"relative overflow-hidden border-2 px-5 pt-6 pb-5",
-				theme.border,
-				theme.bg,
-				theme.shadow,
-				/* All cards stay on the same level */
-				isCurrentPlayer &&
-					`ring-2 ${theme.ring} ring-offset-2 ring-offset-black`
+				"flex min-w-0 flex-col md:self-end",
+				layout.columnOrder,
+				layout.columnWidth
 			)}
 			style={{
 				animationDelay: `${index * 100}ms`,
 			}}
 		>
-			{/* Top accent line */}
-			<div className={cn("absolute inset-x-0 top-0 h-1", theme.bar)} />
-
-			{/* Header: medal badge + icon */}
-			<div className="flex items-start justify-between gap-3">
-				<div className="flex flex-col gap-3">
-					<MedalBadge medal={entry.medal} />
-					<h3 className="font-display text-2xl leading-none text-white sm:text-3xl">
-						{entry.nickname}
-					</h3>
-				</div>
-				<div
-					className={cn(
-						"flex h-10 w-10 shrink-0 items-center justify-center border-2 border-white/15 bg-black/30",
-						theme.icon
-					)}
-				>
-					{isGold ? (
-						<Crown className="h-5 w-5" />
-					) : (
-						<Medal className="h-5 w-5" />
-					)}
-				</div>
-			</div>
-
-			{/* Score — the hero number */}
-			<div className="mt-5 flex items-baseline gap-2">
-				<span
-					className={cn("font-display text-4xl leading-none", theme.accent)}
-				>
-					{entry.score}
-				</span>
-				<span
-					className={cn(
-						"text-xs font-bold tracking-widest uppercase",
-						theme.muted
-					)}
-				>
-					pts
-				</span>
-			</div>
-
-			{/* Compact stats row */}
 			<div
 				className={cn(
-					"mt-4 flex items-center gap-4 border-t-2 pt-4 text-xs font-bold tracking-widest uppercase",
-					theme.muted
+					"relative overflow-hidden border-2 px-5 pt-6 pb-5",
+					theme.border,
+					theme.bg,
+					theme.shadow,
+					layout.cardLift,
+					isCurrentPlayer &&
+						`ring-2 ${theme.ring} ring-offset-2 ring-offset-black`
 				)}
-				style={{ borderColor: "rgba(255,255,255,0.1)" }}
 			>
-				<span>
-					<span className="text-white">{entry.correctCount}</span>/
-					{entry.totalAnswered} right
-				</span>
-				<span className="text-white/10">|</span>
-				<span>
-					<span className="text-white">{formatAccuracy(entry.accuracy)}</span>{" "}
-					acc
-				</span>
-			</div>
+				{/* Top accent line */}
+				<div className={cn("absolute inset-x-0 top-0 h-1", theme.bar)} />
 
-			{/* "This is you" marker */}
-			{isCurrentPlayer ? (
+				{/* Header: medal badge + icon */}
+				<div className="flex items-start justify-between gap-3">
+					<div className="flex min-w-0 flex-col gap-3">
+						<MedalBadge medal={entry.medal} />
+						<h3 className="font-display truncate text-2xl leading-none text-white sm:text-3xl">
+							{entry.nickname}
+						</h3>
+					</div>
+					<div
+						className={cn(
+							"flex h-10 w-10 shrink-0 items-center justify-center border-2 border-white/15 bg-black/30",
+							theme.icon
+						)}
+					>
+						{isGold ? (
+							<Crown className="h-5 w-5" />
+						) : (
+							<Medal className="h-5 w-5" />
+						)}
+					</div>
+				</div>
+
+				{/* Score — the hero number */}
+				<div className="mt-5 flex items-baseline gap-2">
+					<span
+						className={cn("font-display text-4xl leading-none", theme.accent)}
+					>
+						{entry.score}
+					</span>
+					<span
+						className={cn(
+							"text-xs font-bold tracking-widest uppercase",
+							theme.muted
+						)}
+					>
+						pts
+					</span>
+				</div>
+
+				{/* Compact stats row */}
 				<div
 					className={cn(
-						"mt-3 inline-block border-2 px-2.5 py-1 text-[0.6rem] font-extrabold tracking-[0.3em] uppercase",
-						theme.badgeBg
+						"mt-4 flex items-center gap-4 border-t-2 pt-4 text-xs font-bold tracking-widest uppercase",
+						theme.muted
 					)}
+					style={{ borderColor: "rgba(255,255,255,0.1)" }}
 				>
-					This is you
+					<span>
+						<span className="text-white">{entry.correctCount}</span>/
+						{entry.totalAnswered} right
+					</span>
+					<span className="text-white/10">|</span>
+					<span>
+						<span className="text-white">{formatAccuracy(entry.accuracy)}</span>{" "}
+						acc
+					</span>
 				</div>
-			) : null}
+
+				{/* "This is you" marker */}
+				{isCurrentPlayer ? (
+					<div
+						className={cn(
+							"mt-3 inline-block border-2 px-2.5 py-1 text-[0.6rem] font-extrabold tracking-[0.3em] uppercase",
+							theme.badgeBg
+						)}
+					>
+						This is you
+					</div>
+				) : null}
+			</div>
+
+			<div
+				className={cn(
+					"relative border-x-2 border-b-2 bg-black/80",
+					theme.border,
+					layout.platformHeight,
+					layout.platformGlow
+				)}
+			>
+				<div
+					className={cn(
+						"absolute inset-x-0 top-0 h-1",
+						theme.bar,
+						entry.medal === "bronze" && "opacity-85"
+					)}
+				/>
+				<div className="absolute inset-x-3 bottom-0 h-px bg-white/8" />
+				<div className="absolute inset-x-0 bottom-4 flex justify-center">
+					<span
+						className={cn("font-display text-5xl leading-none", theme.muted)}
+					>
+						{entry.rank}
+					</span>
+				</div>
+			</div>
 		</div>
 	);
 }
@@ -621,17 +688,21 @@ export function ParticipantAnswerReview({
 												{option.isSelected ? (
 													<Badge
 														variant="outline"
-														className="rounded-none border-zinc-600 bg-zinc-900 px-2 py-0.5 text-[0.6rem] font-bold tracking-[0.2em] text-zinc-100 uppercase"
+														aria-label="Your pick"
+														title="Your pick"
+														className="rounded-none border-zinc-600 bg-zinc-900 p-1.5 text-zinc-100"
 													>
-														Your pick
+														<Eye className="h-3.5 w-3.5" />
 													</Badge>
 												) : null}
 												{option.isCorrect ? (
 													<Badge
 														variant="outline"
-														className="rounded-none border-emerald-500/60 bg-emerald-500/10 px-2 py-0.5 text-[0.6rem] font-bold tracking-[0.2em] text-emerald-300 uppercase"
+														aria-label="Correct answer"
+														title="Correct answer"
+														className="rounded-none border-emerald-500/60 bg-emerald-500/10 p-1.5 text-emerald-300"
 													>
-														Correct answer
+														<Check className="h-3.5 w-3.5" />
 													</Badge>
 												) : null}
 											</div>

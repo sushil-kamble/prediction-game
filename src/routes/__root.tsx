@@ -73,11 +73,14 @@ function RootDocument({ children }: { children: ReactNode }) {
 	const showDevtools = import.meta.env.DEV;
 
 	return (
-		<html lang="en">
+		<html lang="en" suppressHydrationWarning>
 			<head>
 				<HeadContent />
 			</head>
-			<body className="selection:bg-primary/30 selection:text-primary-foreground font-sans antialiased">
+			<body
+				suppressHydrationWarning
+				className="selection:bg-primary/30 selection:text-primary-foreground font-sans antialiased"
+			>
 				<a
 					href="#main-content"
 					className="bg-primary text-primary-foreground sr-only fixed top-4 left-4 z-[110] px-4 py-2 font-bold uppercase focus:not-sr-only"
