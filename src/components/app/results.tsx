@@ -273,12 +273,10 @@ export function PodiumSection({
 	podium,
 	winnersAnnounced,
 	title,
-	elevateGold = true,
 }: {
 	podium: PodiumEntry[];
 	winnersAnnounced: boolean;
 	title?: string;
-	elevateGold?: boolean;
 }) {
 	if (podium.length === 0) {
 		return null;
@@ -310,7 +308,6 @@ export function PodiumSection({
 						entry={entry}
 						isCurrentPlayer={entry.isCurrentPlayer}
 						index={index}
-						elevateGold={elevateGold}
 					/>
 				))}
 			</div>
@@ -324,12 +321,10 @@ function PodiumCard({
 	entry,
 	isCurrentPlayer,
 	index,
-	elevateGold,
 }: {
 	entry: PodiumEntry;
 	isCurrentPlayer: boolean;
 	index: number;
-	elevateGold: boolean;
 }) {
 	const theme = medalTheme[entry.medal];
 	const isGold = entry.medal === "gold";
@@ -341,8 +336,7 @@ function PodiumCard({
 				theme.border,
 				theme.bg,
 				theme.shadow,
-				/* Gold is visually promoted on larger screens */
-				isGold && elevateGold && "sm:-translate-y-3",
+				/* All cards stay on the same level */
 				isCurrentPlayer &&
 					`ring-2 ${theme.ring} ring-offset-2 ring-offset-black`
 			)}

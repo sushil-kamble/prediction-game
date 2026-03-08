@@ -650,7 +650,7 @@ function PlayerChallengeRoute() {
 										recoveryError ? "player-recovery-error" : undefined
 									}
 								/>
-								<Button type="submit" variant="outline" disabled={isRecovering}>
+								<Button type="submit" variant="outline" disabled={isRecovering} className="shrink-0 whitespace-nowrap">
 									{isRecovering ? "Checking..." : "Recover my entry"}
 								</Button>
 							</form>

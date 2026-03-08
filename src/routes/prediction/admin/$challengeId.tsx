@@ -840,7 +840,6 @@ function AdminChallengeRoute() {
 					<PodiumSection
 						podium={leaderboard.podium}
 						winnersAnnounced={leaderboard.winnersAnnounced}
-						elevateGold={false}
 						title={
 							leaderboard.winnersAnnounced
 								? "Announced winners"
