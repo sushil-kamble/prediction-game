@@ -1,7 +1,14 @@
-import type { ReactNode } from "react";
-import { Crown, Medal, Sparkles, Trophy } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { Check, Crown, Eye, Medal, Sparkles, Trophy, X } from "lucide-react";
 import { Badge } from "#/components/ui/badge";
-import { Button, GlassCard, Input, SectionEyebrow } from "#/components/app/ui";
+import {
+	BottomSheet,
+	Button,
+	GlassCard,
+	Input,
+	SectionEyebrow,
+} from "#/components/app/ui";
+import { optionLabel } from "#/lib/challenge";
 import { formatAccuracy } from "#/lib/results";
 import { cn } from "#/lib/utils";
 
@@ -34,6 +41,22 @@ type CelebrationMessage = {
 	title: string;
 	body: string;
 } | null;
+
+type ParticipantAnswerReviewItem = {
+	questionId: string;
+	order: number;
+	text: string;
+	pointValue: number;
+	selectedOptionIndex: number | null;
+	correctOptionIndex: number | null;
+	isCorrect: boolean;
+	options: Array<{
+		index: number;
+		text: string;
+		isSelected: boolean;
+		isCorrect: boolean;
+	}>;
+};
 
 /* ── Medal theme system ── */
 
@@ -480,5 +503,168 @@ export function ResultsRecoveryCard({
 				</div>
 			</form>
 		</GlassCard>
+	);
+}
+
+export function ParticipantAnswerReview({
+	answers,
+}: {
+	answers: ParticipantAnswerReviewItem[];
+}) {
+	const [isOpen, setIsOpen] = useState(false);
+
+	if (answers.length === 0) {
+		return null;
+	}
+
+	const correctCount = answers.filter((answer) => answer.isCorrect).length;
+
+	return (
+		<>
+			<GlassCard className="px-5 py-6 sm:px-8">
+				<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+					<div>
+						<SectionEyebrow>Your answers</SectionEyebrow>
+						<h2 className="font-display text-3xl text-white sm:text-4xl">
+							See every pick
+						</h2>
+						<p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400 sm:text-base sm:leading-7">
+							Compare what you marked against the official answers for each
+							question.
+						</p>
+					</div>
+					<Button
+						variant="outline"
+						className="w-full sm:w-auto"
+						onClick={() => setIsOpen(true)}
+					>
+						<Eye className="h-4 w-4" />
+						Review your answers
+					</Button>
+				</div>
+			</GlassCard>
+
+			<BottomSheet
+				open={isOpen}
+				onClose={() => setIsOpen(false)}
+				title="Your answers"
+				description={`${correctCount}/${answers.length} correct. See your picks against the official answers.`}
+				footer={
+					<Button className="w-full" onClick={() => setIsOpen(false)}>
+						Close review
+					</Button>
+				}
+			>
+				<div className="mb-6 grid grid-cols-2 gap-3">
+					<ReviewStat label="Correct" value={`${correctCount}/${answers.length}`} />
+					<ReviewStat
+						label="Points"
+						value={String(
+							answers
+								.filter((answer) => answer.isCorrect)
+								.reduce((total, answer) => total + answer.pointValue, 0),
+						)}
+					/>
+				</div>
+
+				<div className="grid gap-4">
+					{answers.map((answer) => (
+						<div
+							key={answer.questionId}
+							className="border-2 border-zinc-800 bg-zinc-950/80 px-4 py-4"
+						>
+							<div className="flex items-start justify-between gap-3">
+								<div>
+									<p className="text-xs font-bold tracking-[0.22em] text-zinc-500 uppercase">
+										Q{answer.order + 1} · {answer.pointValue} pts
+									</p>
+									<h3 className="mt-2 text-base leading-7 font-semibold text-white sm:text-lg">
+										{answer.text}
+									</h3>
+								</div>
+								<Badge
+									variant="outline"
+									className={cn(
+										"shrink-0 rounded-none border-2 px-3 py-1 text-[0.65rem] font-extrabold tracking-[0.24em] uppercase",
+										answer.isCorrect
+											? "border-emerald-400 bg-emerald-400/10 text-emerald-300"
+											: "border-rose-400 bg-rose-400/10 text-rose-300",
+									)}
+								>
+									{answer.isCorrect ? (
+										<Check className="h-3.5 w-3.5" />
+									) : (
+										<X className="h-3.5 w-3.5" />
+									)}
+									{answer.isCorrect ? "Correct" : "Missed"}
+								</Badge>
+							</div>
+
+							<div className="mt-4 grid gap-3">
+								{answer.options.map((option) => (
+									<div
+										key={`${answer.questionId}-${option.index}`}
+										className={cn(
+											"border-2 px-4 py-3",
+											option.isCorrect
+												? "border-emerald-400 bg-emerald-400/10 text-white"
+												: option.isSelected
+													? "border-rose-400 bg-rose-400/10 text-white"
+													: "border-zinc-800 bg-black text-zinc-400",
+										)}
+									>
+										<div className="flex items-start justify-between gap-3">
+											<div className="flex min-w-0 items-start gap-3">
+												<span className="mt-0.5 text-xs font-mono font-bold text-zinc-500">
+													{optionLabel(option.index)}.
+												</span>
+												<p className="min-w-0 text-sm leading-6 font-medium sm:text-base">
+													{option.text}
+												</p>
+											</div>
+											<div className="flex shrink-0 flex-wrap justify-end gap-2">
+												{option.isSelected ? (
+													<Badge
+														variant="outline"
+														className="rounded-none border-zinc-600 bg-zinc-900 px-2 py-0.5 text-[0.6rem] font-bold tracking-[0.2em] text-zinc-100 uppercase"
+													>
+														Your pick
+													</Badge>
+												) : null}
+												{option.isCorrect ? (
+													<Badge
+														variant="outline"
+														className="rounded-none border-emerald-500/60 bg-emerald-500/10 px-2 py-0.5 text-[0.6rem] font-bold tracking-[0.2em] text-emerald-300 uppercase"
+													>
+														Correct answer
+													</Badge>
+												) : null}
+											</div>
+										</div>
+									</div>
+								))}
+							</div>
+						</div>
+					))}
+				</div>
+			</BottomSheet>
+		</>
+	);
+}
+
+function ReviewStat({
+	label,
+	value,
+}: {
+	label: string;
+	value: string;
+}) {
+	return (
+		<div className="border-2 border-zinc-800 bg-zinc-950 px-4 py-4">
+			<p className="text-xs font-bold tracking-[0.22em] text-zinc-500 uppercase">
+				{label}
+			</p>
+			<p className="mt-2 text-2xl font-bold text-white">{value}</p>
+		</div>
 	);
 }

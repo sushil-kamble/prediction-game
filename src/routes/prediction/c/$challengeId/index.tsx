@@ -19,6 +19,7 @@ import {
 	StatusBadge,
 } from "#/components/app/ui";
 import {
+	ParticipantAnswerReview,
 	PodiumSection,
 	ResultHero,
 	ResultsRecoveryCard,
@@ -152,6 +153,12 @@ function PlayerChallengeRoute() {
 		api.challenges.getParticipantPredictions,
 		participantId && uuid ? { challengeId, participantId, uuid } : "skip"
 	)
+	const participantAnswerReview = useQuery(
+		api.challenges.getParticipantAnswerReview,
+		participantId && uuid && Boolean(challenge?.winnersAnnouncedAt)
+			? { challengeId, participantId, uuid }
+			: "skip"
+	)
 
 	const [nickname, setNickname] = useState("");
 	const [username, setUsername] = useState("");
@@ -216,6 +223,9 @@ function PlayerChallengeRoute() {
 		uuid === null ||
 		storedParticipantId === undefined ||
 		(participantId !== null && participantPredictions === undefined) ||
+		(Boolean(challenge?.winnersAnnouncedAt) &&
+			participantId !== null &&
+			participantAnswerReview === undefined) ||
 		(challenge?.status === "closed" && leaderboard === undefined)
 	) {
 		return <PlayerChallengeSkeleton />;
@@ -279,6 +289,9 @@ function PlayerChallengeRoute() {
 							currentParticipant={leaderboard.currentParticipant}
 							celebrationMessage={leaderboard.celebrationMessage}
 							participantCount={leaderboard.participantCount}
+						/>
+						<ParticipantAnswerReview
+							answers={participantAnswerReview ?? []}
 						/>
 						<PodiumSection
 							podium={leaderboard.podium}

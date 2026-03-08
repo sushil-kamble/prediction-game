@@ -1553,6 +1553,87 @@ export const getParticipantPredictions = query({
 	},
 });
 
+export const getParticipantAnswerReview = query({
+	args: {
+		participantId: v.string(),
+		challengeId: v.string(),
+		uuid: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const participantId = ctx.db.normalizeId("prediction_participants", args.participantId);
+		const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
+
+		if (!participantId || !challengeId) {
+			return [];
+		}
+
+		const [participant, challenge, authorizedParticipant] = await Promise.all([
+			ctx.db.get(participantId),
+			ctx.db.get(challengeId),
+			findParticipantByUuid(ctx, challengeId, args.uuid),
+		]);
+
+		if (
+			!participant ||
+			participant.challengeId !== challengeId ||
+			!challenge ||
+			!challenge.winnersAnnouncedAt ||
+			!authorizedParticipant ||
+			authorizedParticipant._id !== participantId
+		) {
+			return [];
+		}
+
+		const [questions, predictions] = await Promise.all([
+			listChallengeQuestions(ctx, challengeId),
+			ctx.db
+				.query("prediction_predictions")
+				.withIndex("by_participant", (q) => q.eq("participantId", participantId))
+				.collect(),
+		]);
+
+		const participantPredictions = predictions.filter(
+			(prediction) => prediction.challengeId === challengeId,
+		);
+
+		if (participantPredictions.length === 0) {
+			return [];
+		}
+
+		const predictionsByQuestionId = new Map(
+			participantPredictions.map((prediction) => [
+				prediction.questionId.toString(),
+				prediction,
+			]),
+		);
+
+		return questions.map((question) => {
+			const prediction = predictionsByQuestionId.get(question._id.toString());
+			const selectedOptionIndex = prediction?.selectedOptionIndex ?? null;
+			const correctOptionIndex = question.correctOptionIndex;
+
+			return {
+				questionId: question._id.toString(),
+				order: question.order,
+				text: question.text,
+				pointValue: question.pointValue,
+				selectedOptionIndex,
+				correctOptionIndex,
+				isCorrect:
+					selectedOptionIndex !== null &&
+					correctOptionIndex !== null &&
+					selectedOptionIndex === correctOptionIndex,
+				options: question.options.map((option, index) => ({
+					index,
+					text: option,
+					isSelected: selectedOptionIndex === index,
+					isCorrect: correctOptionIndex === index,
+				})),
+			};
+		});
+	},
+});
+
 export const getLeaderboard = query({
 	args: {
 		challengeId: v.string(),

@@ -12,7 +12,11 @@ import {
 	SportBadge,
 	StatusBadge,
 } from "#/components/app/ui";
-import { PodiumSection, ResultHero } from "#/components/app/results";
+import {
+	ParticipantAnswerReview,
+	PodiumSection,
+	ResultHero,
+} from "#/components/app/results";
 import { Button } from "#/components/ui/button";
 import { Badge } from "#/components/ui/badge";
 import { api } from "#/lib/api";
@@ -56,6 +60,12 @@ function LeaderboardRoute() {
 			? { challengeId, participantId, uuid }
 			: "skip"
 	)
+	const participantAnswerReview = useQuery(
+		api.challenges.getParticipantAnswerReview,
+		participantId && uuid && Boolean(challenge?.winnersAnnouncedAt)
+			? { challengeId, participantId, uuid }
+			: "skip"
+	)
 
 	const hasSubmitted =
 		participantPredictions !== undefined &&
@@ -66,7 +76,10 @@ function LeaderboardRoute() {
 		leaderboard === undefined ||
 		uuid === null ||
 		storedParticipantId === undefined ||
-		(participantId !== null && participantPredictions === undefined)
+		(participantId !== null && participantPredictions === undefined) ||
+		(Boolean(challenge?.winnersAnnouncedAt) &&
+			participantId !== null &&
+			participantAnswerReview === undefined)
 	) {
 		return <LeaderboardSkeleton />;
 	}
@@ -123,12 +136,17 @@ function LeaderboardRoute() {
 			</div>
 
 			{leaderboard.winnersAnnounced && leaderboard.currentParticipant ? (
-				<ResultHero
-					challengeTitle={challenge.title}
-					currentParticipant={leaderboard.currentParticipant}
-					celebrationMessage={leaderboard.celebrationMessage}
-					participantCount={leaderboard.participantCount}
-				/>
+				<>
+					<ResultHero
+						challengeTitle={challenge.title}
+						currentParticipant={leaderboard.currentParticipant}
+						celebrationMessage={leaderboard.celebrationMessage}
+						participantCount={leaderboard.participantCount}
+					/>
+					<ParticipantAnswerReview
+						answers={participantAnswerReview ?? []}
+					/>
+				</>
 			) : null}
 
 			{!hasSubmitted && !leaderboard.winnersAnnounced ? (
