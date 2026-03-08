@@ -849,7 +849,8 @@ function AdminChallengeRoute() {
 				) : null}
 
 				{hasAdminAccess &&
-					(challenge.status === "open" || challenge.status === "scoring") && (
+					(challenge.status === "open" || challenge.status === "scoring") &&
+					!isQuestionEditUnlocked && (
 						<GlassCard className="px-5 py-6 sm:px-8">
 							<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 								<div>
