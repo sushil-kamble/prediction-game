@@ -10,10 +10,7 @@ import {
 	validateNicknameInput,
 	validateOptionalUsernameInput,
 } from "../shared/game-results";
-import type {
-	MedalTier,
-	WinnerMessageRecord,
-} from "../shared/game-results";
+import type { MedalTier, WinnerMessageRecord } from "../shared/game-results";
 
 type ReadCtx = QueryCtx | MutationCtx;
 
@@ -21,7 +18,7 @@ const challengeStatus = v.union(
 	v.literal("draft"),
 	v.literal("open"),
 	v.literal("scoring"),
-	v.literal("closed"),
+	v.literal("closed")
 );
 
 const predictionInput = v.object({
@@ -215,7 +212,7 @@ function sanitizeLogValue(value: unknown): unknown {
 				key.toLowerCase().includes("secret")
 					? "[REDACTED]"
 					: sanitizeLogValue(nestedValue),
-			]),
+			])
 		);
 	}
 
@@ -225,7 +222,7 @@ function sanitizeLogValue(value: unknown): unknown {
 function logMutationError(
 	mutationName: string,
 	args: Record<string, unknown>,
-	error: unknown,
+	error: unknown
 ) {
 	const challengeId =
 		typeof args.challengeId === "string" ? args.challengeId : null;
@@ -244,7 +241,7 @@ function logMutationError(
 
 async function requireChallenge(
 	ctx: ReadCtx,
-	challengeId: Id<"prediction_challenges">,
+	challengeId: Id<"prediction_challenges">
 ) {
 	const challenge = await ctx.db.get(challengeId);
 	if (!challenge) {
@@ -255,7 +252,7 @@ async function requireChallenge(
 
 async function requireQuestion(
 	ctx: ReadCtx,
-	questionId: Id<"prediction_questions">,
+	questionId: Id<"prediction_questions">
 ) {
 	const question = await ctx.db.get(questionId);
 	if (!question) {
@@ -266,7 +263,7 @@ async function requireQuestion(
 
 async function requireParticipant(
 	ctx: ReadCtx,
-	participantId: Id<"prediction_participants">,
+	participantId: Id<"prediction_participants">
 ) {
 	const participant = await ctx.db.get(participantId);
 	if (!participant) {
@@ -278,7 +275,7 @@ async function requireParticipant(
 async function requireAdminChallenge(
 	ctx: ReadCtx,
 	challengeId: Id<"prediction_challenges">,
-	adminSecret: string,
+	adminSecret: string
 ) {
 	const challenge = await requireChallenge(ctx, challengeId);
 
@@ -291,7 +288,7 @@ async function requireAdminChallenge(
 
 async function listChallengeQuestions(
 	ctx: ReadCtx,
-	challengeId: Id<"prediction_challenges">,
+	challengeId: Id<"prediction_challenges">
 ): Promise<Array<Doc<"prediction_questions">>> {
 	return await ctx.db
 		.query("prediction_questions")
@@ -301,7 +298,7 @@ async function listChallengeQuestions(
 
 function ensureQuestionInChallenge(
 	question: Doc<"prediction_questions">,
-	challengeId: Id<"prediction_challenges">,
+	challengeId: Id<"prediction_challenges">
 ) {
 	if (question.challengeId !== challengeId) {
 		throw new Error("Question does not belong to this challenge.");
@@ -310,14 +307,18 @@ function ensureQuestionInChallenge(
 
 function ensureParticipantInChallenge(
 	participant: Doc<"prediction_participants">,
-	challengeId: Id<"prediction_challenges">,
+	challengeId: Id<"prediction_challenges">
 ) {
 	if (participant.challengeId !== challengeId) {
 		throw new Error("Participant does not belong to this challenge.");
 	}
 }
 
-function ensureOptionIndex(index: number, options: string[], fieldName: string) {
+function ensureOptionIndex(
+	index: number,
+	options: string[],
+	fieldName: string
+) {
 	if (!Number.isInteger(index) || index < 0 || index >= options.length) {
 		throw new Error(`${fieldName} is out of bounds.`);
 	}
@@ -338,13 +339,14 @@ function serializePublicQuestion(question: Doc<"prediction_questions">) {
 
 function serializePublicChallenge(
 	challenge: Doc<"prediction_challenges">,
-	questions: Array<Doc<"prediction_questions">>,
+	questions: Array<Doc<"prediction_questions">>
 ) {
 	return {
 		_id: challenge._id,
 		title: challenge.title,
 		sport: challenge.sport,
 		status: challenge.status,
+		questionEditUnlocked: challenge.questionEditUnlocked ?? false,
 		winnersAnnouncedAt: challenge.winnersAnnouncedAt ?? null,
 		questions: questions.map((question) => serializePublicQuestion(question)),
 	};
@@ -352,7 +354,7 @@ function serializePublicChallenge(
 
 function serializeAdminChallenge(
 	challenge: Doc<"prediction_challenges">,
-	questions: Array<Doc<"prediction_questions">>,
+	questions: Array<Doc<"prediction_questions">>
 ) {
 	return {
 		_id: challenge._id,
@@ -365,7 +367,9 @@ function serializeAdminChallenge(
 	};
 }
 
-function serializeParticipantIdentity(participant: Doc<"prediction_participants">) {
+function serializeParticipantIdentity(
+	participant: Doc<"prediction_participants">
+) {
 	return {
 		_id: participant._id,
 		nickname: participant.nickname,
@@ -374,17 +378,25 @@ function serializeParticipantIdentity(participant: Doc<"prediction_participants"
 
 function ensureChallengeOpenForPredictions(
 	challenge: Doc<"prediction_challenges">,
-	action: "join" | "submit",
+	action: "join" | "submit"
 ) {
 	if (challenge.status === "draft") {
 		throw new Error("This challenge is not open yet.");
+	}
+
+	if (isQuestionEditingUnlocked(challenge)) {
+		throw new Error(
+			action === "join"
+				? "Questions are unpublished while the admin is editing them."
+				: "Questions are unpublished while the admin is editing them."
+		);
 	}
 
 	if (challenge.status === "scoring") {
 		throw new Error(
 			action === "join"
 				? "Predictions are locked because scoring has started."
-				: "Predictions are locked because scoring has started.",
+				: "Predictions are locked because scoring has started."
 		);
 	}
 
@@ -395,7 +407,7 @@ function ensureChallengeOpenForPredictions(
 
 async function hasChallengeSubmissions(
 	ctx: ReadCtx,
-	challengeId: Id<"prediction_challenges">,
+	challengeId: Id<"prediction_challenges">
 ) {
 	const prediction = await ctx.db
 		.query("prediction_predictions")
@@ -407,11 +419,11 @@ async function hasChallengeSubmissions(
 
 async function ensureQuestionSetMutable(
 	ctx: ReadCtx,
-	challengeId: Id<"prediction_challenges">,
+	challengeId: Id<"prediction_challenges">
 ) {
 	if (await hasChallengeSubmissions(ctx, challengeId)) {
 		throw new Error(
-			"Questions cannot be edited after a player has submitted picks.",
+			"Questions cannot be edited after a player has submitted picks."
 		);
 	}
 }
@@ -430,21 +442,21 @@ async function ensureWinnerMessagesSeeded(ctx: MutationCtx) {
 				order: message.order,
 				title: message.title,
 				body: message.body,
-			}),
-		),
+			})
+		)
 	);
 }
 
 async function findParticipantByUuid(
 	ctx: ReadCtx,
 	challengeId: Id<"prediction_challenges">,
-	uuid: string,
+	uuid: string
 ) {
 	const normalizedUuid = requireTrimmed(uuid, "UUID");
 	const directParticipant = await ctx.db
 		.query("prediction_participants")
 		.withIndex("by_challenge_uuid", (q) =>
-			q.eq("challengeId", challengeId).eq("uuid", normalizedUuid),
+			q.eq("challengeId", challengeId).eq("uuid", normalizedUuid)
 		)
 		.unique();
 
@@ -455,7 +467,7 @@ async function findParticipantByUuid(
 	const deviceLink = await ctx.db
 		.query("prediction_participantDevices")
 		.withIndex("by_challenge_uuid", (q) =>
-			q.eq("challengeId", challengeId).eq("uuid", normalizedUuid),
+			q.eq("challengeId", challengeId).eq("uuid", normalizedUuid)
 		)
 		.unique();
 
@@ -474,13 +486,15 @@ async function findParticipantByUuid(
 async function requireParticipantByUsername(
 	ctx: ReadCtx,
 	challengeId: Id<"prediction_challenges">,
-	username: string,
+	username: string
 ) {
-	const usernameLower = normalizeComparableValue(requireTrimmed(username, "Username"));
+	const usernameLower = normalizeComparableValue(
+		requireTrimmed(username, "Username")
+	);
 	const participant = await ctx.db
 		.query("prediction_participants")
 		.withIndex("by_challenge_username", (q) =>
-			q.eq("challengeId", challengeId).eq("usernameLower", usernameLower),
+			q.eq("challengeId", challengeId).eq("usernameLower", usernameLower)
 		)
 		.unique();
 
@@ -495,7 +509,7 @@ async function linkDeviceToParticipant(
 	ctx: MutationCtx,
 	challengeId: Id<"prediction_challenges">,
 	participant: Doc<"prediction_participants">,
-	uuid: string,
+	uuid: string
 ) {
 	const normalizedUuid = requireTrimmed(uuid, "UUID");
 
@@ -506,7 +520,7 @@ async function linkDeviceToParticipant(
 	const existingDeviceLink = await ctx.db
 		.query("prediction_participantDevices")
 		.withIndex("by_challenge_uuid", (q) =>
-			q.eq("challengeId", challengeId).eq("uuid", normalizedUuid),
+			q.eq("challengeId", challengeId).eq("uuid", normalizedUuid)
 		)
 		.unique();
 
@@ -514,7 +528,10 @@ async function linkDeviceToParticipant(
 		return;
 	}
 
-	if (existingDeviceLink && existingDeviceLink.participantId !== participant._id) {
+	if (
+		existingDeviceLink &&
+		existingDeviceLink.participantId !== participant._id
+	) {
 		throw new Error("That device is already linked to another player.");
 	}
 
@@ -526,7 +543,9 @@ async function linkDeviceToParticipant(
 	});
 }
 
-function getSubmittedParticipantIds(rows: Array<{ participantId: string; submittedAt: number | null }>) {
+function getSubmittedParticipantIds(
+	rows: Array<{ participantId: string; submittedAt: number | null }>
+) {
 	return rows
 		.filter((row) => row.submittedAt !== null)
 		.slice(0, MEDAL_TIERS.length)
@@ -536,21 +555,22 @@ function getSubmittedParticipantIds(rows: Array<{ participantId: string; submitt
 async function buildChallengeLeaderboard(
 	ctx: ReadCtx,
 	challengeId: Id<"prediction_challenges">,
-	options?: { uuid?: string },
+	options?: { uuid?: string }
 ) {
 	const challenge = await requireChallenge(ctx, challengeId);
-	const [participants, questions, predictions, winnerMessages] = await Promise.all([
-		ctx.db
-			.query("prediction_participants")
-			.withIndex("by_challenge", (q) => q.eq("challengeId", challengeId))
-			.collect(),
-		listChallengeQuestions(ctx, challengeId),
-		ctx.db
-			.query("prediction_predictions")
-			.withIndex("by_challenge", (q) => q.eq("challengeId", challengeId))
-			.collect(),
-		ctx.db.query("prediction_winnerMessages").collect(),
-	]);
+	const [participants, questions, predictions, winnerMessages] =
+		await Promise.all([
+			ctx.db
+				.query("prediction_participants")
+				.withIndex("by_challenge", (q) => q.eq("challengeId", challengeId))
+				.collect(),
+			listChallengeQuestions(ctx, challengeId),
+			ctx.db
+				.query("prediction_predictions")
+				.withIndex("by_challenge", (q) => q.eq("challengeId", challengeId))
+				.collect(),
+			ctx.db.query("prediction_winnerMessages").collect(),
+		]);
 
 	const rows = buildLeaderboardRows({
 		participants: participants.map((participant) => ({
@@ -572,7 +592,7 @@ async function buildChallengeLeaderboard(
 		})),
 		winnerParticipantIds:
 			challenge.winnerParticipantIds?.map((participantId) =>
-				participantId.toString(),
+				participantId.toString()
 			) ?? null,
 	});
 
@@ -581,11 +601,15 @@ async function buildChallengeLeaderboard(
 	let celebrationMessage = null;
 
 	if (options?.uuid) {
-		const participant = await findParticipantByUuid(ctx, challengeId, options.uuid);
+		const participant = await findParticipantByUuid(
+			ctx,
+			challengeId,
+			options.uuid
+		);
 		if (participant) {
 			currentParticipantId = participant._id.toString();
 			const row = rows.find(
-				(candidate) => candidate.participantId === participant._id.toString(),
+				(candidate) => candidate.participantId === participant._id.toString()
 			);
 
 			if (row) {
@@ -613,7 +637,7 @@ async function buildChallengeLeaderboard(
 							medal: row.medal,
 							sport: challenge.sport,
 							seed: `${challenge._id.toString()}:${participant._id.toString()}:${row.medal}`,
-						},
+						}
 					);
 
 					if (selectedMessage) {
@@ -653,10 +677,10 @@ async function buildChallengeLeaderboard(
 		celebrationMessage,
 		participantCount: participants.length,
 		submittedParticipantCount: participants.filter(
-			(participant) => participant.submittedAt !== undefined,
+			(participant) => participant.submittedAt !== undefined
 		).length,
 		answeredQuestionCount: questions.filter(
-			(question) => question.correctOptionIndex !== null,
+			(question) => question.correctOptionIndex !== null
 		).length,
 		questionCount: questions.length,
 		winnersAnnounced: challenge.winnersAnnouncedAt !== undefined,
@@ -716,7 +740,10 @@ export const addQuestion = mutation({
 	},
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
+			const challengeId = ctx.db.normalizeId(
+				"prediction_challenges",
+				args.challengeId
+			);
 			if (!challengeId) {
 				throw new Error("Challenge not found.");
 			}
@@ -724,15 +751,13 @@ export const addQuestion = mutation({
 			const challenge = await requireAdminChallenge(
 				ctx,
 				challengeId,
-				requireTrimmed(args.adminSecret, "Admin secret"),
+				requireTrimmed(args.adminSecret, "Admin secret")
 			);
 			if (challenge.status === "closed") {
 				throw new Error("This challenge is closed.");
 			}
 			if (!isQuestionEditingUnlocked(challenge)) {
-				throw new Error(
-					"Questions are locked. Unpublish to edit questions.",
-				);
+				throw new Error("Questions are locked. Unpublish to edit questions.");
 			}
 			await ensureQuestionSetMutable(ctx, challengeId);
 
@@ -763,8 +788,14 @@ export const updateQuestion = mutation({
 	},
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
-			const questionId = ctx.db.normalizeId("prediction_questions", args.questionId);
+			const challengeId = ctx.db.normalizeId(
+				"prediction_challenges",
+				args.challengeId
+			);
+			const questionId = ctx.db.normalizeId(
+				"prediction_questions",
+				args.questionId
+			);
 
 			if (!challengeId || !questionId) {
 				throw new Error("Question not found.");
@@ -773,15 +804,13 @@ export const updateQuestion = mutation({
 			const challenge = await requireAdminChallenge(
 				ctx,
 				challengeId,
-				requireTrimmed(args.adminSecret, "Admin secret"),
+				requireTrimmed(args.adminSecret, "Admin secret")
 			);
 			if (challenge.status === "closed") {
 				throw new Error("This challenge is closed.");
 			}
 			if (!isQuestionEditingUnlocked(challenge)) {
-				throw new Error(
-					"Questions are locked. Unpublish to edit questions.",
-				);
+				throw new Error("Questions are locked. Unpublish to edit questions.");
 			}
 			await ensureQuestionSetMutable(ctx, challengeId);
 
@@ -808,8 +837,14 @@ export const deleteQuestion = mutation({
 	},
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
-			const questionId = ctx.db.normalizeId("prediction_questions", args.questionId);
+			const challengeId = ctx.db.normalizeId(
+				"prediction_challenges",
+				args.challengeId
+			);
+			const questionId = ctx.db.normalizeId(
+				"prediction_questions",
+				args.questionId
+			);
 
 			if (!challengeId || !questionId) {
 				throw new Error("Question not found.");
@@ -818,15 +853,13 @@ export const deleteQuestion = mutation({
 			const challenge = await requireAdminChallenge(
 				ctx,
 				challengeId,
-				requireTrimmed(args.adminSecret, "Admin secret"),
+				requireTrimmed(args.adminSecret, "Admin secret")
 			);
 			if (challenge.status === "closed") {
 				throw new Error("This challenge is closed.");
 			}
 			if (!isQuestionEditingUnlocked(challenge)) {
-				throw new Error(
-					"Questions are locked. Unpublish to edit questions.",
-				);
+				throw new Error("Questions are locked. Unpublish to edit questions.");
 			}
 			await ensureQuestionSetMutable(ctx, challengeId);
 
@@ -837,11 +870,12 @@ export const deleteQuestion = mutation({
 
 			const remainingQuestions = await listChallengeQuestions(ctx, challengeId);
 			await Promise.all(
-				remainingQuestions.map((item: Doc<"prediction_questions">, index: number) =>
-					item.order === index
-						? Promise.resolve()
-						: ctx.db.patch(item._id, { order: index }),
-				),
+				remainingQuestions.map(
+					(item: Doc<"prediction_questions">, index: number) =>
+						item.order === index
+							? Promise.resolve()
+							: ctx.db.patch(item._id, { order: index })
+				)
 			);
 		} catch (error) {
 			logMutationError("deleteQuestion", args, error);
@@ -857,7 +891,10 @@ export const publishChallenge = mutation({
 	},
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
+			const challengeId = ctx.db.normalizeId(
+				"prediction_challenges",
+				args.challengeId
+			);
 			if (!challengeId) {
 				throw new Error("Challenge not found.");
 			}
@@ -865,7 +902,7 @@ export const publishChallenge = mutation({
 			const challenge = await requireAdminChallenge(
 				ctx,
 				challengeId,
-				requireTrimmed(args.adminSecret, "Admin secret"),
+				requireTrimmed(args.adminSecret, "Admin secret")
 			);
 			if (challenge.status === "closed") {
 				throw new Error("Closed challenges cannot be published.");
@@ -899,7 +936,10 @@ export const unpublishChallenge = mutation({
 	},
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
+			const challengeId = ctx.db.normalizeId(
+				"prediction_challenges",
+				args.challengeId
+			);
 			if (!challengeId) {
 				throw new Error("Challenge not found.");
 			}
@@ -907,7 +947,7 @@ export const unpublishChallenge = mutation({
 			const challenge = await requireAdminChallenge(
 				ctx,
 				challengeId,
-				requireTrimmed(args.adminSecret, "Admin secret"),
+				requireTrimmed(args.adminSecret, "Admin secret")
 			);
 			if (challenge.status === "draft") {
 				throw new Error("Draft challenges are already editable.");
@@ -935,7 +975,10 @@ export const joinChallenge = mutation({
 	returns: v.id("prediction_participants"),
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
+			const challengeId = ctx.db.normalizeId(
+				"prediction_challenges",
+				args.challengeId
+			);
 			if (!challengeId) {
 				throw new Error("Challenge not found.");
 			}
@@ -947,7 +990,7 @@ export const joinChallenge = mutation({
 			const nickname = validateNickname(args.nickname);
 			const { username, usernameLower } = validateUsername(
 				args.username,
-				nickname,
+				nickname
 			);
 			const existing = await findParticipantByUuid(ctx, challengeId, uuid);
 
@@ -959,7 +1002,7 @@ export const joinChallenge = mutation({
 				const existingUsername = await ctx.db
 					.query("prediction_participants")
 					.withIndex("by_challenge_username", (q) =>
-						q.eq("challengeId", challengeId).eq("usernameLower", usernameLower),
+						q.eq("challengeId", challengeId).eq("usernameLower", usernameLower)
 					)
 					.unique();
 
@@ -995,7 +1038,10 @@ export const recoverParticipantByUsername = mutation({
 	}),
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
+			const challengeId = ctx.db.normalizeId(
+				"prediction_challenges",
+				args.challengeId
+			);
 			if (!challengeId) {
 				throw new Error("Challenge not found.");
 			}
@@ -1004,18 +1050,23 @@ export const recoverParticipantByUsername = mutation({
 			if (challenge.status === "draft") {
 				throw new Error("This challenge is not open yet.");
 			}
+			if (isQuestionEditingUnlocked(challenge)) {
+				throw new Error(
+					"Questions are unpublished while the admin is editing them."
+				);
+			}
 
 			const participant = await requireParticipantByUsername(
 				ctx,
 				challengeId,
-				args.username,
+				args.username
 			);
 
 			await linkDeviceToParticipant(
 				ctx,
 				challengeId,
 				participant,
-				requireTrimmed(args.uuid, "UUID"),
+				requireTrimmed(args.uuid, "UUID")
 			);
 
 			return {
@@ -1038,10 +1089,13 @@ export const submitPredictions = mutation({
 	},
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
+			const challengeId = ctx.db.normalizeId(
+				"prediction_challenges",
+				args.challengeId
+			);
 			const participantId = ctx.db.normalizeId(
 				"prediction_participants",
-				args.participantId,
+				args.participantId
 			);
 
 			if (!challengeId || !participantId) {
@@ -1057,15 +1111,20 @@ export const submitPredictions = mutation({
 			const authorizedParticipant = await findParticipantByUuid(
 				ctx,
 				challengeId,
-				requireTrimmed(args.uuid, "UUID"),
+				requireTrimmed(args.uuid, "UUID")
 			);
-			if (!authorizedParticipant || authorizedParticipant._id !== participantId) {
+			if (
+				!authorizedParticipant ||
+				authorizedParticipant._id !== participantId
+			) {
 				throw new Error("This device is not authorized for that participant.");
 			}
 
 			const existingPrediction = await ctx.db
 				.query("prediction_predictions")
-				.withIndex("by_participant", (q) => q.eq("participantId", participantId))
+				.withIndex("by_participant", (q) =>
+					q.eq("participantId", participantId)
+				)
 				.first();
 			if (existingPrediction) {
 				throw new Error("Predictions have already been submitted.");
@@ -1080,13 +1139,22 @@ export const submitPredictions = mutation({
 				throw new Error("Submit one prediction for every question.");
 			}
 
-			const questionMap = new Map<Id<"prediction_questions">, Doc<"prediction_questions">>(
-				questions.map((question: Doc<"prediction_questions">) => [question._id, question]),
+			const questionMap = new Map<
+				Id<"prediction_questions">,
+				Doc<"prediction_questions">
+			>(
+				questions.map((question: Doc<"prediction_questions">) => [
+					question._id,
+					question,
+				])
 			);
 			const seenQuestionIds = new Set<string>();
 
 			for (const prediction of args.predictions) {
-				const questionId = ctx.db.normalizeId("prediction_questions", prediction.questionId);
+				const questionId = ctx.db.normalizeId(
+					"prediction_questions",
+					prediction.questionId
+				);
 				if (!questionId) {
 					throw new Error("One or more selected questions are invalid.");
 				}
@@ -1094,7 +1162,7 @@ export const submitPredictions = mutation({
 				const question = questionMap.get(questionId);
 				if (!question) {
 					throw new Error(
-						"One or more questions do not belong to this challenge.",
+						"One or more questions do not belong to this challenge."
 					);
 				}
 
@@ -1107,7 +1175,7 @@ export const submitPredictions = mutation({
 				ensureOptionIndex(
 					prediction.selectedOptionIndex,
 					question.options,
-					"Selected option",
+					"Selected option"
 				);
 			}
 
@@ -1118,10 +1186,10 @@ export const submitPredictions = mutation({
 			const submittedAt = Date.now();
 			await Promise.all(
 				args.predictions.map(
-					async (prediction: typeof args.predictions[number]) => {
+					async (prediction: (typeof args.predictions)[number]) => {
 						const questionId = ctx.db.normalizeId(
 							"prediction_questions",
-							prediction.questionId,
+							prediction.questionId
 						);
 						if (!questionId) {
 							throw new Error("One or more selected questions are invalid.");
@@ -1134,8 +1202,8 @@ export const submitPredictions = mutation({
 							selectedOptionIndex: prediction.selectedOptionIndex,
 							submittedAt,
 						});
-					},
-				),
+					}
+				)
 			);
 			await ctx.db.patch(participantId, { submittedAt });
 		} catch (error) {
@@ -1150,12 +1218,18 @@ export const markCorrectAnswer = mutation({
 		challengeId: v.string(),
 		questionId: v.string(),
 		adminSecret: v.string(),
-		correctOptionIndex: v.number(),
+		correctOptionIndex: v.union(v.number(), v.null()),
 	},
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
-			const questionId = ctx.db.normalizeId("prediction_questions", args.questionId);
+			const challengeId = ctx.db.normalizeId(
+				"prediction_challenges",
+				args.challengeId
+			);
+			const questionId = ctx.db.normalizeId(
+				"prediction_questions",
+				args.questionId
+			);
 
 			if (!challengeId || !questionId) {
 				throw new Error("Question not found.");
@@ -1164,30 +1238,31 @@ export const markCorrectAnswer = mutation({
 			const challenge = await requireAdminChallenge(
 				ctx,
 				challengeId,
-				requireTrimmed(args.adminSecret, "Admin secret"),
+				requireTrimmed(args.adminSecret, "Admin secret")
 			);
-			if (challenge.status === "draft") {
-				throw new Error("Publish the challenge before scoring answers.");
-			}
-			if (challenge.status === "closed") {
-				throw new Error("This challenge is closed.");
+			if (challenge.status !== "scoring") {
+				throw new Error(
+					challenge.status === "draft"
+						? "Publish the challenge and lock submissions before scoring answers."
+						: challenge.status === "open"
+							? "Lock submissions before scoring answers."
+							: "This challenge is closed."
+				);
 			}
 
 			const question = await requireQuestion(ctx, questionId);
 			ensureQuestionInChallenge(question, challengeId);
-			ensureOptionIndex(
-				args.correctOptionIndex,
-				question.options,
-				"Correct option",
-			);
+			if (args.correctOptionIndex !== null) {
+				ensureOptionIndex(
+					args.correctOptionIndex,
+					question.options,
+					"Correct option"
+				);
+			}
 
 			await ctx.db.patch(questionId, {
 				correctOptionIndex: args.correctOptionIndex,
 			});
-
-			if (challenge.status === "open") {
-				await ctx.db.patch(challengeId, { status: "scoring" });
-			}
 		} catch (error) {
 			logMutationError("markCorrectAnswer", args, error);
 			throw error;
@@ -1202,7 +1277,10 @@ export const clearAnswerMarkings = mutation({
 	},
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
+			const challengeId = ctx.db.normalizeId(
+				"prediction_challenges",
+				args.challengeId
+			);
 			if (!challengeId) {
 				throw new Error("Challenge not found.");
 			}
@@ -1210,7 +1288,7 @@ export const clearAnswerMarkings = mutation({
 			const challenge = await requireAdminChallenge(
 				ctx,
 				challengeId,
-				requireTrimmed(args.adminSecret, "Admin secret"),
+				requireTrimmed(args.adminSecret, "Admin secret")
 			);
 			if (challenge.status === "draft") {
 				throw new Error("Publish the challenge before scoring answers.");
@@ -1222,15 +1300,14 @@ export const clearAnswerMarkings = mutation({
 			const questions = await listChallengeQuestions(ctx, challengeId);
 			await Promise.all(
 				questions
-					.filter((question: Doc<"prediction_questions">) => question.correctOptionIndex !== null)
+					.filter(
+						(question: Doc<"prediction_questions">) =>
+							question.correctOptionIndex !== null
+					)
 					.map((question: Doc<"prediction_questions">) =>
-						ctx.db.patch(question._id, { correctOptionIndex: null }),
-					),
+						ctx.db.patch(question._id, { correctOptionIndex: null })
+					)
 			);
-
-			if (challenge.status === "scoring") {
-				await ctx.db.patch(challengeId, { status: "open" });
-			}
 		} catch (error) {
 			logMutationError("clearAnswerMarkings", args, error);
 			throw error;
@@ -1245,7 +1322,10 @@ export const lockPredictions = mutation({
 	},
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
+			const challengeId = ctx.db.normalizeId(
+				"prediction_challenges",
+				args.challengeId
+			);
 			if (!challengeId) {
 				throw new Error("Challenge not found.");
 			}
@@ -1253,7 +1333,7 @@ export const lockPredictions = mutation({
 			const challenge = await requireAdminChallenge(
 				ctx,
 				challengeId,
-				requireTrimmed(args.adminSecret, "Admin secret"),
+				requireTrimmed(args.adminSecret, "Admin secret")
 			);
 
 			if (challenge.status !== "open") {
@@ -1262,7 +1342,7 @@ export const lockPredictions = mutation({
 						? "Publish the challenge before locking predictions."
 						: challenge.status === "scoring"
 							? "Predictions are already locked."
-							: "This challenge is closed.",
+							: "This challenge is closed."
 				);
 			}
 
@@ -1281,7 +1361,10 @@ export const unlockPredictions = mutation({
 	},
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
+			const challengeId = ctx.db.normalizeId(
+				"prediction_challenges",
+				args.challengeId
+			);
 			if (!challengeId) {
 				throw new Error("Challenge not found.");
 			}
@@ -1289,7 +1372,7 @@ export const unlockPredictions = mutation({
 			const challenge = await requireAdminChallenge(
 				ctx,
 				challengeId,
-				requireTrimmed(args.adminSecret, "Admin secret"),
+				requireTrimmed(args.adminSecret, "Admin secret")
 			);
 
 			if (challenge.status !== "scoring") {
@@ -1298,11 +1381,11 @@ export const unlockPredictions = mutation({
 
 			const questions = await listChallengeQuestions(ctx, challengeId);
 			const hasMarkedAnswers = questions.some(
-				(q: Doc<"prediction_questions">) => q.correctOptionIndex !== null,
+				(q: Doc<"prediction_questions">) => q.correctOptionIndex !== null
 			);
 			if (hasMarkedAnswers) {
 				throw new Error(
-					"Clear answer markings first before unlocking predictions.",
+					"Clear answer markings first before unlocking predictions."
 				);
 			}
 
@@ -1325,7 +1408,10 @@ export const announceWinners = mutation({
 	}),
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
+			const challengeId = ctx.db.normalizeId(
+				"prediction_challenges",
+				args.challengeId
+			);
 			if (!challengeId) {
 				throw new Error("Challenge not found.");
 			}
@@ -1333,7 +1419,7 @@ export const announceWinners = mutation({
 			const challenge = await requireAdminChallenge(
 				ctx,
 				challengeId,
-				requireTrimmed(args.adminSecret, "Admin secret"),
+				requireTrimmed(args.adminSecret, "Admin secret")
 			);
 
 			if (challenge.winnersAnnouncedAt) {
@@ -1354,9 +1440,12 @@ export const announceWinners = mutation({
 			}
 
 			const winnerParticipantIds = getSubmittedParticipantIds(leaderboard.rows)
-				.map((participantId) => ctx.db.normalizeId("prediction_participants", participantId))
-				.filter((participantId): participantId is Id<"prediction_participants"> =>
-					Boolean(participantId),
+				.map((participantId) =>
+					ctx.db.normalizeId("prediction_participants", participantId)
+				)
+				.filter(
+					(participantId): participantId is Id<"prediction_participants"> =>
+						Boolean(participantId)
 				);
 
 			if (winnerParticipantIds.length === 0) {
@@ -1390,7 +1479,10 @@ export const closeChallenge = mutation({
 	},
 	handler: async (ctx, args) => {
 		try {
-			const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
+			const challengeId = ctx.db.normalizeId(
+				"prediction_challenges",
+				args.challengeId
+			);
 			if (!challengeId) {
 				throw new Error("Challenge not found.");
 			}
@@ -1398,7 +1490,7 @@ export const closeChallenge = mutation({
 			await requireAdminChallenge(
 				ctx,
 				challengeId,
-				requireTrimmed(args.adminSecret, "Admin secret"),
+				requireTrimmed(args.adminSecret, "Admin secret")
 			);
 			await ctx.db.patch(challengeId, {
 				status: "closed",
@@ -1416,7 +1508,10 @@ export const getChallenge = query({
 		challengeId: v.string(),
 	},
 	handler: async (ctx, args) => {
-		const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
+		const challengeId = ctx.db.normalizeId(
+			"prediction_challenges",
+			args.challengeId
+		);
 		if (!challengeId) {
 			return null;
 		}
@@ -1437,7 +1532,10 @@ export const getAdminChallenge = query({
 		adminSecret: v.string(),
 	},
 	handler: async (ctx, args) => {
-		const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
+		const challengeId = ctx.db.normalizeId(
+			"prediction_challenges",
+			args.challengeId
+		);
 		if (!challengeId) {
 			return null;
 		}
@@ -1447,7 +1545,7 @@ export const getAdminChallenge = query({
 			challenge = await requireAdminChallenge(
 				ctx,
 				challengeId,
-				requireTrimmed(args.adminSecret, "Admin secret"),
+				requireTrimmed(args.adminSecret, "Admin secret")
 			);
 		} catch {
 			return null;
@@ -1465,7 +1563,10 @@ export const getChallengeSummaries = query({
 	handler: async (ctx, args) => {
 		const summaries = await Promise.all(
 			args.challengeIds.map(async (challengeId) => {
-				const normalizedId = ctx.db.normalizeId("prediction_challenges", challengeId);
+				const normalizedId = ctx.db.normalizeId(
+					"prediction_challenges",
+					challengeId
+				);
 				if (!normalizedId) {
 					return null;
 				}
@@ -1482,7 +1583,7 @@ export const getChallengeSummaries = query({
 					status: challenge.status,
 					createdAt: challenge.createdAt,
 				};
-			}),
+			})
 		);
 
 		return summaries.filter(Boolean);
@@ -1495,12 +1596,19 @@ export const getParticipant = query({
 		uuid: v.string(),
 	},
 	handler: async (ctx, args) => {
-		const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
+		const challengeId = ctx.db.normalizeId(
+			"prediction_challenges",
+			args.challengeId
+		);
 		if (!challengeId) {
 			return null;
 		}
 
-		const participant = await findParticipantByUuid(ctx, challengeId, args.uuid);
+		const participant = await findParticipantByUuid(
+			ctx,
+			challengeId,
+			args.uuid
+		);
 		return participant ? serializeParticipantIdentity(participant) : null;
 	},
 });
@@ -1512,8 +1620,14 @@ export const getParticipantPredictions = query({
 		uuid: v.string(),
 	},
 	handler: async (ctx, args) => {
-		const participantId = ctx.db.normalizeId("prediction_participants", args.participantId);
-		const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
+		const participantId = ctx.db.normalizeId(
+			"prediction_participants",
+			args.participantId
+		);
+		const challengeId = ctx.db.normalizeId(
+			"prediction_challenges",
+			args.challengeId
+		);
 
 		if (!participantId || !challengeId) {
 			return {};
@@ -1527,7 +1641,7 @@ export const getParticipantPredictions = query({
 		const authorizedParticipant = await findParticipantByUuid(
 			ctx,
 			challengeId,
-			args.uuid,
+			args.uuid
 		);
 		if (!authorizedParticipant || authorizedParticipant._id !== participantId) {
 			return {};
@@ -1548,7 +1662,7 @@ export const getParticipantPredictions = query({
 						selectedOptionIndex: prediction.selectedOptionIndex,
 						submittedAt: prediction.submittedAt,
 					},
-				]),
+				])
 		);
 	},
 });
@@ -1560,8 +1674,14 @@ export const getParticipantAnswerReview = query({
 		uuid: v.string(),
 	},
 	handler: async (ctx, args) => {
-		const participantId = ctx.db.normalizeId("prediction_participants", args.participantId);
-		const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
+		const participantId = ctx.db.normalizeId(
+			"prediction_participants",
+			args.participantId
+		);
+		const challengeId = ctx.db.normalizeId(
+			"prediction_challenges",
+			args.challengeId
+		);
 
 		if (!participantId || !challengeId) {
 			return [];
@@ -1588,12 +1708,14 @@ export const getParticipantAnswerReview = query({
 			listChallengeQuestions(ctx, challengeId),
 			ctx.db
 				.query("prediction_predictions")
-				.withIndex("by_participant", (q) => q.eq("participantId", participantId))
+				.withIndex("by_participant", (q) =>
+					q.eq("participantId", participantId)
+				)
 				.collect(),
 		]);
 
 		const participantPredictions = predictions.filter(
-			(prediction) => prediction.challengeId === challengeId,
+			(prediction) => prediction.challengeId === challengeId
 		);
 
 		if (participantPredictions.length === 0) {
@@ -1604,7 +1726,7 @@ export const getParticipantAnswerReview = query({
 			participantPredictions.map((prediction) => [
 				prediction.questionId.toString(),
 				prediction,
-			]),
+			])
 		);
 
 		return questions.map((question) => {
@@ -1640,7 +1762,10 @@ export const getLeaderboard = query({
 		uuid: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		const challengeId = ctx.db.normalizeId("prediction_challenges", args.challengeId);
+		const challengeId = ctx.db.normalizeId(
+			"prediction_challenges",
+			args.challengeId
+		);
 		if (!challengeId) {
 			return null;
 		}

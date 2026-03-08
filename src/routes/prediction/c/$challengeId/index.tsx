@@ -44,6 +44,16 @@ type PublicQuestion = {
 	order: number;
 };
 
+type PublicChallenge = {
+	_id: string;
+	title: string;
+	sport: string;
+	status: "draft" | "open" | "scoring" | "closed";
+	questionEditUnlocked: boolean;
+	winnersAnnouncedAt: number | null;
+	questions: PublicQuestion[];
+};
+
 type JoinFormErrors = {
 	nickname?: string;
 	username?: string;
@@ -73,7 +83,7 @@ export const Route = createFileRoute("/prediction/c/$challengeId/")({
 				{ property: "og:description", content: description },
 				{ property: "og:url", content: url },
 			],
-		}
+		};
 	},
 	component: PlayerChallengeRoute,
 });
@@ -100,22 +110,22 @@ function handleRadioOptionKeyDown(
 		case "ArrowRight":
 			event.preventDefault();
 			onSelect((currentIndex + 1) % totalOptions);
-			return
+			return;
 		case "ArrowUp":
 		case "ArrowLeft":
 			event.preventDefault();
 			onSelect((currentIndex - 1 + totalOptions) % totalOptions);
-			return
+			return;
 		case "Home":
 			event.preventDefault();
 			onSelect(0);
-			return
+			return;
 		case "End":
 			event.preventDefault();
 			onSelect(totalOptions - 1);
-			return
+			return;
 		default:
-			return
+			return;
 	}
 }
 
@@ -131,18 +141,18 @@ function PlayerChallengeRoute() {
 					uuid: uuid ?? undefined,
 				}
 			: "skip"
-	)
+	);
 	const joinChallenge = useMutation(api.challenges.joinChallenge);
 	const recoverParticipantByUsername = useMutation(
 		api.challenges.recoverParticipantByUsername
-	)
+	);
 	const submitPredictions = useMutation(api.challenges.submitPredictions);
 	const { showToast } = useToast();
 
 	const participant = useQuery(
 		api.challenges.getParticipant,
 		uuid ? { challengeId, uuid } : "skip"
-	)
+	);
 
 	const [storedParticipantId, setStoredParticipantIdState] = useState<
 		string | null | undefined
@@ -152,13 +162,13 @@ function PlayerChallengeRoute() {
 	const participantPredictions = useQuery(
 		api.challenges.getParticipantPredictions,
 		participantId && uuid ? { challengeId, participantId, uuid } : "skip"
-	)
+	);
 	const participantAnswerReview = useQuery(
 		api.challenges.getParticipantAnswerReview,
 		participantId && uuid && Boolean(challenge?.winnersAnnouncedAt)
 			? { challengeId, participantId, uuid }
 			: "skip"
-	)
+	);
 
 	const [nickname, setNickname] = useState("");
 	const [username, setUsername] = useState("");
@@ -187,7 +197,7 @@ function PlayerChallengeRoute() {
 
 	useEffect(() => {
 		if (!participantPredictions) {
-			return
+			return;
 		}
 
 		const submittedSelections = Object.fromEntries(
@@ -195,7 +205,7 @@ function PlayerChallengeRoute() {
 				prediction.questionId.toString(),
 				prediction.selectedOptionIndex,
 			])
-		)
+		);
 
 		if (Object.keys(submittedSelections).length > 0) {
 			setSelections(submittedSelections);
@@ -209,7 +219,7 @@ function PlayerChallengeRoute() {
 				.slice()
 				.sort((a, b) => a.order - b.order) as Array<PublicQuestion>,
 		[challenge]
-	)
+	);
 
 	const hasSubmitted =
 		participantPredictions !== undefined &&
@@ -243,7 +253,7 @@ function PlayerChallengeRoute() {
 					</Link>
 				</Button>
 			</FullScreenState>
-		)
+		);
 	}
 
 	if (challenge.status === "closed" && leaderboard === null) {
@@ -252,7 +262,7 @@ function PlayerChallengeRoute() {
 				title="Leaderboard unavailable"
 				description="This challenge couldn't load the latest standings."
 			/>
-		)
+		);
 	}
 
 	if (challenge.status === "draft") {
@@ -261,7 +271,16 @@ function PlayerChallengeRoute() {
 				title="This challenge isn't open yet"
 				description="Check back soon once the admin publishes the board."
 			/>
-		)
+		);
+	}
+
+	if (challenge.questionEditUnlocked) {
+		return (
+			<FullScreenState
+				title="Questions are unpublished"
+				description="The admin is updating this challenge right now. Please check back once the questions are republished."
+			/>
+		);
 	}
 
 	if (challenge.status === "closed") {
@@ -271,7 +290,7 @@ function PlayerChallengeRoute() {
 					title="Leaderboard unavailable"
 					description="This challenge couldn't load the latest standings."
 				/>
-			)
+			);
 		}
 
 		if (challenge.winnersAnnouncedAt) {
@@ -290,9 +309,7 @@ function PlayerChallengeRoute() {
 							celebrationMessage={leaderboard.celebrationMessage}
 							participantCount={leaderboard.participantCount}
 						/>
-						<ParticipantAnswerReview
-							answers={participantAnswerReview ?? []}
-						/>
+						<ParticipantAnswerReview answers={participantAnswerReview ?? []} />
 						<PodiumSection
 							podium={leaderboard.podium}
 							winnersAnnounced={leaderboard.winnersAnnounced}
@@ -308,7 +325,7 @@ function PlayerChallengeRoute() {
 							</Link>
 						</Button>
 					</PageShell>
-				)
+				);
 			}
 
 			return (
@@ -344,7 +361,7 @@ function PlayerChallengeRoute() {
 						title="Final podium"
 					/>
 				</PageShell>
-			)
+			);
 		}
 
 		return (
@@ -362,7 +379,7 @@ function PlayerChallengeRoute() {
 					</Link>
 				</Button>
 			</FullScreenState>
-		)
+		);
 	}
 
 	if (challenge.status === "scoring" && !hasSubmitted && !participant) {
@@ -381,7 +398,7 @@ function PlayerChallengeRoute() {
 					</Link>
 				</Button>
 			</FullScreenState>
-		)
+		);
 	}
 
 	async function handleJoin(event: FormEvent<HTMLFormElement>) {
@@ -410,16 +427,16 @@ function PlayerChallengeRoute() {
 					nextErrors.username ??
 					"Check the highlighted fields.",
 				"error"
-			)
-			return
+			);
+			return;
 		}
 
 		if (!uuid) {
 			showToast(
 				"Couldn't initialize a player ID. Refresh and try again.",
 				"error"
-			)
-			return
+			);
+			return;
 		}
 
 		setJoinErrors({});
@@ -430,7 +447,7 @@ function PlayerChallengeRoute() {
 				uuid,
 				nickname: trimmedNickname,
 				username: trimmedUsername || undefined,
-			})
+			});
 			setStoredParticipantId(challengeId, nextParticipantId.toString());
 			setStoredParticipantIdState(nextParticipantId.toString());
 			showToast("You're in. Make your picks.", "success");
@@ -447,14 +464,14 @@ function PlayerChallengeRoute() {
 			setRecoveryError("Enter the username you saved for this challenge.");
 			focusField("player-recovery-username");
 			showToast("Enter the username you saved for this challenge.", "error");
-			return
+			return;
 		}
 		if (!uuid) {
 			showToast(
 				"Couldn't initialize this device. Refresh and try again.",
 				"error"
-			)
-			return
+			);
+			return;
 		}
 
 		setRecoveryError(null);
@@ -464,7 +481,7 @@ function PlayerChallengeRoute() {
 				challengeId,
 				uuid,
 				username: trimmedUsername,
-			})
+			});
 			setStoredParticipantId(challengeId, result.participantId.toString());
 			setStoredParticipantIdState(result.participantId.toString());
 			showToast(`Welcome back, ${result.nickname}.`, "success");
@@ -481,35 +498,35 @@ function PlayerChallengeRoute() {
 			const nextSelections = {
 				...current,
 				[questionId]: optionIndex,
-			}
+			};
 			setStoredPredictionDraft(challengeId, nextSelections);
 
 			// Auto-scroll to next unanswered question after a brief pause
 			const nextUnanswered = orderedQuestions.find(
 				(q) => nextSelections[q._id.toString()] === undefined
-			)
+			);
 			if (nextUnanswered) {
 				requestAnimationFrame(() => {
 					setTimeout(() => {
 						document
 							.getElementById(`question-${nextUnanswered._id}`)
 							?.scrollIntoView({ behavior: "smooth", block: "center" });
-					}, 250)
-				})
+					}, 250);
+				});
 			}
 
 			return nextSelections;
-		})
+		});
 	}
 
 	async function handleSubmitPredictions() {
 		if (!participantId) {
 			showToast("Join the challenge before submitting predictions.", "error");
-			return
+			return;
 		}
 		if (!uuid) {
 			showToast("Couldn't verify this device. Refresh and try again.", "error");
-			return
+			return;
 		}
 
 		setIsSubmitting(true);
@@ -522,7 +539,7 @@ function PlayerChallengeRoute() {
 					questionId: question._id.toString(),
 					selectedOptionIndex: selections[question._id.toString()],
 				})),
-			})
+			});
 			clearStoredPredictionDraft(challengeId);
 			setIsConfirmOpen(false);
 			showToast("Predictions locked in.", "success");
@@ -566,7 +583,7 @@ function PlayerChallengeRoute() {
 										setJoinErrors((current) => ({
 											...current,
 											nickname: undefined,
-										}))
+										}));
 									}}
 									placeholder="Pick a name everyone will recognise"
 									maxLength={20}
@@ -601,7 +618,7 @@ function PlayerChallengeRoute() {
 										setJoinErrors((current) => ({
 											...current,
 											username: undefined,
-										}))
+										}));
 									}}
 									placeholder="Only for logging in from another device"
 									maxLength={20}
@@ -643,7 +660,7 @@ function PlayerChallengeRoute() {
 							<form
 								className="mt-4 flex flex-col gap-3 sm:flex-row"
 								onSubmit={(event) => {
-									event.preventDefault()
+									event.preventDefault();
 									void handleRecoverParticipant();
 								}}
 							>
@@ -652,7 +669,7 @@ function PlayerChallengeRoute() {
 									value={recoveryUsername}
 									onChange={(event) => {
 										setRecoveryUsername(event.target.value);
-										setRecoveryError(null)
+										setRecoveryError(null);
 									}}
 									placeholder="Enter your private username"
 									autoComplete="username"
@@ -663,7 +680,12 @@ function PlayerChallengeRoute() {
 										recoveryError ? "player-recovery-error" : undefined
 									}
 								/>
-								<Button type="submit" variant="outline" disabled={isRecovering} className="shrink-0 whitespace-nowrap">
+								<Button
+									type="submit"
+									variant="outline"
+									disabled={isRecovering}
+									className="shrink-0 whitespace-nowrap"
+								>
 									{isRecovering ? "Checking..." : "Recover my entry"}
 								</Button>
 							</form>
@@ -900,7 +922,7 @@ function PlayerChallengeRoute() {
 											))}
 										</div>
 									</fieldset>
-								)
+								);
 							})}
 						</div>
 					</>
@@ -982,7 +1004,7 @@ function PlayerChallengeRoute() {
 				</div>
 			</BottomSheet>
 		</>
-	)
+	);
 }
 
 function PlayerHeader({
@@ -993,7 +1015,7 @@ function PlayerHeader({
 }: {
 	title: string;
 	sport: string;
-	status: "open" | "scoring" | "closed";
+	status: PublicChallenge["status"];
 	challengeId: string;
 }) {
 	return (
@@ -1026,7 +1048,7 @@ function PlayerHeader({
 				</Button>
 			</div>
 		</div>
-	)
+	);
 }
 
 function PlayerChallengeSkeleton() {
@@ -1036,7 +1058,7 @@ function PlayerChallengeSkeleton() {
 			<SkeletonBlock className="h-56" />
 			<SkeletonBlock className="h-72" />
 		</PageShell>
-	)
+	);
 }
 
 function getErrorMessage(error: unknown) {
