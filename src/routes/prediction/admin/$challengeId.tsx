@@ -6,6 +6,7 @@ import {
 	ArrowLeft,
 	Check,
 	Copy,
+	Info,
 	Minus,
 	Pencil,
 	Plus,
@@ -46,6 +47,7 @@ import {
 	answeredCorrectCount,
 	buildChallengeUrl,
 	buildLeaderboardUrl,
+	getAdminHint,
 	optionLabel,
 } from "#/lib/challenge";
 import { getStoredAdminChallenge } from "#/lib/storage";
@@ -525,6 +527,21 @@ function AdminChallengeRoute() {
 
 				{hasAdminAccess ? (
 					<>
+						<div className="flex items-start gap-3 border-2 border-sky-500/30 bg-sky-500/5 px-5 py-4">
+							<Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-400" />
+							<p className="text-sm font-medium leading-relaxed text-sky-200">
+								{getAdminHint({
+									status: challenge.status,
+									questionCount: challenge.questions.length,
+									questionsPublished: !isQuestionEditUnlocked,
+									scoredCount: answeredCount,
+									totalQuestions: challenge.questions.length,
+									hasSubmissions: leaderboard.submittedParticipantCount > 0,
+									winnersAnnounced: Boolean(challenge.winnersAnnouncedAt),
+								})}
+							</p>
+						</div>
+
 						<GlassCard className="px-5 py-6 sm:px-8">
 							<SectionEyebrow>
 								{editingQuestionId ? "Editing question" : "New question"}
