@@ -10,22 +10,15 @@ A real-time sports prediction platform. Create a challenge in under a minute, sh
 
 ## Screenshots
 
-<table>
-  <tr>
-    <td><img src="docs/screenshots/home-desktop.png" alt="Home page" /></td>
-    <td><img src="docs/screenshots/player-challenge.png" alt="Player challenge view" /></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/admin-detail.png" alt="Admin challenge builder" /></td>
-    <td><img src="docs/screenshots/leaderboard.png" alt="Live leaderboard podium" /></td>
-  </tr>
-</table>
+![Home page](docs/screenshots/home-desktop.png)
 
-<details>
-  <summary>Mobile view</summary>
-  <br />
-  <img src="docs/screenshots/home-mobile.png" alt="Home page on mobile" width="390" />
-</details>
+![Player challenge view](docs/screenshots/player-challenge.png)
+
+![Admin challenge builder](docs/screenshots/admin-detail.png)
+
+![Live leaderboard podium](docs/screenshots/leaderboard.png)
+
+![Home page on mobile](docs/screenshots/home-mobile.png)
 
 ---
 
